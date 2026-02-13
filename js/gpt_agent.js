@@ -3520,10 +3520,4 @@ console.log('✅ GPT Agent v9.0 - Core initialized!');
     console.log('🆕 Smart Action Button: ENABLED ✨');
     console.log('🆕 Mobile Optimized: ENABLED 📱');
     console.log('🆕 Fullscreen Expand: ENABLED 🖥️');
-
 }
-
-
-
-
-
