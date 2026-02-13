@@ -1,12 +1,5 @@
 /****************************************************************************
- * 🧠 HybridSearchEngine V3 - Professional Semantic Router
- * 
- * Core Features:
- * 1. Intelligent Intent Classification (Multi-Database Detection)
- * 2. True Vector Search with Cosine Similarity
- * 3. Hybrid Search (Semantic + Keyword Fusion)
- * 4. Automatic Data Format Normalization
- * 5. Production-Ready Error Handling
+ * 🧠 HybridSearchEngine V3.2 - Fixed JSON Structure
  ****************************************************************************/
 
 import { pipeline, env } from 'https://cdn.jsdelivr.net/npm/@xenova/transformers@2.17.1';
@@ -25,28 +18,22 @@ class HybridSearchEngine {
         this.intentSignatures = {};
         this.isReady = false;
         
-        // Intent classification thresholds
-        this.intentThreshold = 0.35; // Minimum confidence to select a database
-        this.multiIntentThreshold = 0.30; // Threshold for multi-database queries
+        this.intentThreshold = 0.35;
+        this.multiIntentThreshold = 0.30;
     }
 
-    /**
-     * Initialize the engine
-     */
     async initialize() {
         if (this.isReady) return;
         console.log("⏳ Initializing Semantic Router...");
         
         try {
-            // Load embedding model
             this.embedder = await pipeline('feature-extraction', 'Xenova/all-MiniLM-L6-v2');
             
-            // Load vector databases
             const loadDatabase = async (filename) => {
                 const res = await fetch(`js/${filename}`);
                 if (!res.ok) throw new Error(`Failed to load: ${filename}`);
-                const data = await res.json();
-                return this.normalizeData(data);
+                const jsonData = await res.json();
+                return this.normalizeData(jsonData);
             };
 
             const [activities, areas, decision104] = await Promise.all([
@@ -59,9 +46,9 @@ class HybridSearchEngine {
             this.databases.areas = areas;
             this.databases.decision104 = decision104;
 
-            console.log(`✅ Loaded databases: activities(${activities.length}), areas(${areas.length}), decision104(${decision104.length})`);
+            console.log(`✅ Loaded: activities(${activities.length}), areas(${areas.length}), decision104(${decision104.length})`);
 
-            // Create intent signatures (semantic fingerprints)
+            // Intent signatures
             this.intentSignatures = {
                 activities: await this.embed('industrial activities, business operations, manufacturing processes, production stages, licenses, permits, regulatory requirements'),
                 areas: await this.embed('geographic locations, industrial zones, land areas, regional boundaries, coordinates, administrative regions'),
@@ -77,35 +64,52 @@ class HybridSearchEngine {
     }
 
     /**
-     * Normalize data from Object or Array format to unified Array format
+     * ✅ الإصلاح الرئيسي: معالجة بنية JSON الصحيحة
      */
-    normalizeData(data) {
-        // Already an array
-        if (Array.isArray(data)) {
-            return data;
+    normalizeData(jsonData) {
+        // Case 1: البيانات موجودة في خاصية "data"
+        if (jsonData.data && Array.isArray(jsonData.data)) {
+            console.log(`📦 Extracted ${jsonData.data.length} items from "data" property`);
+            return jsonData.data;
         }
         
-        // Convert object to array
-        if (typeof data === 'object' && data !== null) {
-            return Object.values(data);
+        // Case 2: البيانات موجودة في خاصية "items"
+        if (jsonData.items && Array.isArray(jsonData.items)) {
+            console.log(`📦 Extracted ${jsonData.items.length} items from "items" property`);
+            return jsonData.items;
+        }
+        
+        // Case 3: الملف نفسه Array
+        if (Array.isArray(jsonData)) {
+            console.log(`📦 Data is already an array: ${jsonData.length} items`);
+            return jsonData;
+        }
+        
+        // Case 4: Object يحتوي على بيانات مباشرة (استبعاد metadata)
+        if (typeof jsonData === 'object' && jsonData !== null) {
+            // فلترة المفاتيح التي هي metadata
+            const metadataKeys = ['version', 'model', 'dimension', 'count', 'database', 'created_at'];
+            const dataEntries = Object.entries(jsonData)
+                .filter(([key]) => !metadataKeys.includes(key))
+                .map(([_, value]) => value)
+                .filter(item => item && typeof item === 'object' && item.vector);
+            
+            if (dataEntries.length > 0) {
+                console.log(`📦 Extracted ${dataEntries.length} items from object properties`);
+                return dataEntries;
+            }
         }
         
         console.warn("⚠️ Unexpected data format, returning empty array");
         return [];
     }
 
-    /**
-     * Convert text to embedding vector
-     */
     async embed(text) {
         if (!this.embedder) throw new Error("Model not ready");
         const output = await this.embedder(text, { pooling: 'mean', normalize: true });
         return Array.from(output.data);
     }
 
-    /**
-     * Calculate cosine similarity between two vectors
-     */
     similarity(vecA, vecB) {
         let dot = 0, normA = 0, normB = 0;
         for (let i = 0; i < vecA.length; i++) {
@@ -116,10 +120,6 @@ class HybridSearchEngine {
         return dot / (Math.sqrt(normA) * Math.sqrt(normB));
     }
 
-    /**
-     * Classify user intent and determine target database(s)
-     * Returns array of databases to search, ordered by relevance
-     */
     async classifyIntent(queryVector) {
         const scores = [];
         
@@ -128,22 +128,18 @@ class HybridSearchEngine {
             scores.push({ database: dbName, confidence: score });
         }
         
-        // Sort by confidence
         scores.sort((a, b) => b.confidence - a.confidence);
         
         console.log("📊 Intent Analysis:", scores.map(s => 
             `${s.database}: ${Math.round(s.confidence * 100)}%`
         ).join(' | '));
         
-        // Determine which databases to search
         const targets = [];
         
-        // Primary database (highest confidence)
         if (scores[0].confidence >= this.intentThreshold) {
             targets.push(scores[0].database);
         }
         
-        // Secondary databases (for complex queries)
         for (let i = 1; i < scores.length; i++) {
             if (scores[i].confidence >= this.multiIntentThreshold && 
                 scores[i].confidence > scores[0].confidence * 0.7) {
@@ -151,7 +147,6 @@ class HybridSearchEngine {
             }
         }
         
-        // Fallback: search all if no strong match
         if (targets.length === 0) {
             console.log("⚠️ No strong intent match, searching all databases");
             return ['activities', 'areas', 'decision104'];
@@ -161,15 +156,11 @@ class HybridSearchEngine {
         return targets;
     }
 
-    /**
-     * Vector search within a specific database
-     */
     vectorSearch(queryVector, database, topK = 5) {
         const results = [];
         
         for (const item of database) {
             if (!item.vector || !Array.isArray(item.vector)) {
-                console.warn("⚠️ Invalid item (missing vector):", item.id);
                 continue;
             }
             
@@ -181,20 +172,16 @@ class HybridSearchEngine {
             });
         }
         
-        // Sort and return top K
         return results
             .sort((a, b) => b.score - a.score)
             .slice(0, topK);
     }
 
-    /**
-     * Keyword-based scoring (for hybrid approach)
-     */
     keywordScore(query, text) {
         if (!text) return 0;
         
         const queryTokens = query.toLowerCase()
-            .replace(/[^\u0600-\u06FF\w\s]/g, '') // Keep Arabic + alphanumeric
+            .replace(/[^\u0600-\u06FF\w\s]/g, '')
             .split(/\s+/)
             .filter(t => t.length > 2);
         
@@ -210,29 +197,25 @@ class HybridSearchEngine {
         return queryTokens.length > 0 ? matches / queryTokens.length : 0;
     }
 
-    /**
-     * Hybrid search combining vector similarity and keyword matching
-     */
     hybridSearch(query, queryVector, database, topK = 5) {
         const results = [];
         
         for (const item of database) {
             if (!item.vector || !Array.isArray(item.vector)) continue;
             
-            // Vector similarity (70% weight)
             const vectorScore = this.similarity(queryVector, item.vector);
             
-            // Keyword matching (30% weight)
             const searchableText = [
                 item.name_ar,
                 item.name_en,
                 item.description,
-                item.activity_name
+                item.activity_name,
+                item.location,
+                item.area_name
             ].filter(Boolean).join(' ');
             
             const keywordScore = this.keywordScore(query, searchableText);
             
-            // Combined score
             const finalScore = (vectorScore * 0.7) + (keywordScore * 0.3);
             
             results.push({
@@ -249,9 +232,6 @@ class HybridSearchEngine {
             .slice(0, topK);
     }
 
-    /**
-     * Main search function
-     */
     async search(query, options = {}) {
         if (!this.isReady) await this.initialize();
         
@@ -263,13 +243,9 @@ class HybridSearchEngine {
         
         console.log(`\n🔍 Search Query: "${query}"`);
         
-        // Step 1: Convert query to vector
         const queryVector = await this.embed(query);
-        
-        // Step 2: Classify intent and determine target databases
         const targetDatabases = await this.classifyIntent(queryVector);
         
-        // Step 3: Search in each target database
         const allResults = [];
         
         for (const dbName of targetDatabases) {
@@ -280,26 +256,23 @@ class HybridSearchEngine {
                 continue;
             }
             
-            console.log(`🔎 Searching in [${dbName}]...`);
+            console.log(`🔎 Searching in [${dbName}] (${database.length} items)...`);
             
             const results = useHybrid 
                 ? this.hybridSearch(query, queryVector, database, topK)
                 : this.vectorSearch(queryVector, database, topK);
             
-            // Add database source to results
             results.forEach(r => {
                 r.source = dbName;
                 allResults.push(r);
             });
         }
         
-        // Step 4: Sort all results and filter by minimum score
         const finalResults = allResults
             .sort((a, b) => (b.finalScore || b.score) - (a.finalScore || a.score))
             .filter(r => (r.finalScore || r.score) >= minScore)
             .slice(0, topK);
         
-        // Step 5: Return structured response
         const response = {
             query: query,
             targetDatabases: targetDatabases,
@@ -311,12 +284,11 @@ class HybridSearchEngine {
         
         console.log(`✅ Found ${finalResults.length} results`);
         if (finalResults.length > 0) {
-            console.log(`🏆 Top match: ${finalResults[0].id} (${Math.round(response.confidence * 100)}%)`);
+            console.log(`🏆 Top match: ${finalResults[0].id} (${Math.round(response.confidence * 100)}%) from [${finalResults[0].source}]`);
         }
         
         return response;
     }
 }
 
-// Export singleton instance
 export const hybridEngine = new HybridSearchEngine();
