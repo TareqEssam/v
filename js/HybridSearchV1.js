@@ -1,5 +1,5 @@
-this.embedder = await pipeline/****************************************************************************
- * 🧠 HybridSearchEngine V3.2 - Fixed JSON Structure
+/****************************************************************************
+ * 🧠 HybridSearchEngine V4 - E5 Model + Fixed Everything
  ****************************************************************************/
 
 import { pipeline, env } from 'https://cdn.jsdelivr.net/npm/@xenova/transformers@2.17.1';
@@ -18,15 +18,17 @@ class HybridSearchEngine {
         this.intentSignatures = {};
         this.isReady = false;
         
-        this.intentThreshold = 0.35;
-        this.multiIntentThreshold = 0.30;
+        // Lower thresholds for better recall
+        this.intentThreshold = 0.25;
+        this.multiIntentThreshold = 0.20;
     }
 
     async initialize() {
         if (this.isReady) return;
-        console.log("⏳ Initializing Semantic Router...");
+        console.log("⏳ Initializing Semantic Router with E5...");
         
         try {
+            // Load E5 model (same as Python)
             this.embedder = await pipeline('feature-extraction', 'Xenova/multilingual-e5-small');
             
             const loadDatabase = async (filename) => {
@@ -48,65 +50,45 @@ class HybridSearchEngine {
 
             console.log(`✅ Loaded: activities(${activities.length}), areas(${areas.length}), decision104(${decision104.length})`);
 
-            // Intent signatures
+            // Intent signatures with E5 prefix
             this.intentSignatures = {
-                activities: await this.embed('industrial activities, business operations, manufacturing processes, production stages, licenses, permits, regulatory requirements'),
-                areas: await this.embed('geographic locations, industrial zones, land areas, regional boundaries, coordinates, administrative regions'),
-                decision104: await this.embed('tax exemptions, financial incentives, investment benefits, customs duties, strategic industries, ministerial decree 104')
+                activities: await this.embed('query: industrial activities manufacturing licenses permits'),
+                areas: await this.embed('query: geographic locations industrial zones regions'),
+                decision104: await this.embed('query: tax exemptions financial incentives decree 104')
             };
 
             this.isReady = true;
-            console.log("✅ Hybrid Search Engine ready!");
+            console.log("✅ E5 Hybrid Search Engine ready!");
         } catch (error) {
             console.error("❌ Initialization error:", error);
             throw error;
         }
     }
 
-    /**
-     * ✅ الإصلاح الرئيسي: معالجة بنية JSON الصحيحة
-     */
     normalizeData(jsonData) {
-        // Case 1: البيانات موجودة في خاصية "data"
+        // Extract from "data" property
         if (jsonData.data && Array.isArray(jsonData.data)) {
-            console.log(`📦 Extracted ${jsonData.data.length} items from "data" property`);
+            console.log(`📦 Extracted ${jsonData.data.length} items`);
             return jsonData.data;
         }
         
-        // Case 2: البيانات موجودة في خاصية "items"
-        if (jsonData.items && Array.isArray(jsonData.items)) {
-            console.log(`📦 Extracted ${jsonData.items.length} items from "items" property`);
-            return jsonData.items;
-        }
-        
-        // Case 3: الملف نفسه Array
+        // Already an array
         if (Array.isArray(jsonData)) {
-            console.log(`📦 Data is already an array: ${jsonData.length} items`);
+            console.log(`📦 Data is array: ${jsonData.length} items`);
             return jsonData;
         }
         
-        // Case 4: Object يحتوي على بيانات مباشرة (استبعاد metadata)
-        if (typeof jsonData === 'object' && jsonData !== null) {
-            // فلترة المفاتيح التي هي metadata
-            const metadataKeys = ['version', 'model', 'dimension', 'count', 'database', 'created_at'];
-            const dataEntries = Object.entries(jsonData)
-                .filter(([key]) => !metadataKeys.includes(key))
-                .map(([_, value]) => value)
-                .filter(item => item && typeof item === 'object' && item.vector);
-            
-            if (dataEntries.length > 0) {
-                console.log(`📦 Extracted ${dataEntries.length} items from object properties`);
-                return dataEntries;
-            }
-        }
-        
-        console.warn("⚠️ Unexpected data format, returning empty array");
+        console.warn("⚠️ Unexpected format");
         return [];
     }
 
     async embed(text) {
         if (!this.embedder) throw new Error("Model not ready");
-        const output = await this.embedder(text, { pooling: 'mean', normalize: true });
+        
+        // E5 requires "query: " prefix for queries
+        const prefixedText = text.startsWith('query:') ? text : `query: ${text}`;
+        
+        const output = await this.embedder(prefixedText, { pooling: 'mean', normalize: true });
         return Array.from(output.data);
     }
 
@@ -130,7 +112,7 @@ class HybridSearchEngine {
         
         scores.sort((a, b) => b.confidence - a.confidence);
         
-        console.log("📊 Intent Analysis:", scores.map(s => 
+        console.log("📊 Intent:", scores.map(s => 
             `${s.database}: ${Math.round(s.confidence * 100)}%`
         ).join(' | '));
         
@@ -142,27 +124,25 @@ class HybridSearchEngine {
         
         for (let i = 1; i < scores.length; i++) {
             if (scores[i].confidence >= this.multiIntentThreshold && 
-                scores[i].confidence > scores[0].confidence * 0.7) {
+                scores[i].confidence > scores[0].confidence * 0.75) {
                 targets.push(scores[i].database);
             }
         }
         
         if (targets.length === 0) {
-            console.log("⚠️ No strong intent match, searching all databases");
+            console.log("⚠️ Low confidence, searching all");
             return ['activities', 'areas', 'decision104'];
         }
         
-        console.log(`🎯 Target databases: [${targets.join(', ')}]`);
+        console.log(`🎯 Targets: [${targets.join(', ')}]`);
         return targets;
     }
 
-    vectorSearch(queryVector, database, topK = 5) {
+    vectorSearch(queryVector, database, topK = 10) {
         const results = [];
         
         for (const item of database) {
-            if (!item.vector || !Array.isArray(item.vector)) {
-                continue;
-            }
+            if (!item.vector || !Array.isArray(item.vector)) continue;
             
             const score = this.similarity(queryVector, item.vector);
             results.push({
@@ -177,46 +157,47 @@ class HybridSearchEngine {
             .slice(0, topK);
     }
 
-    keywordScore(query, text) {
-        if (!text) return 0;
+    keywordScore(query, item) {
+        const queryLower = query.toLowerCase();
+        const searchableText = [
+            item.name_ar,
+            item.name_en,
+            item.description,
+            item.activity_name,
+            item.location,
+            item.area_name,
+            item.isic_code
+        ].filter(Boolean).join(' ').toLowerCase();
         
-        const queryTokens = query.toLowerCase()
-            .replace(/[^\u0600-\u06FF\w\s]/g, '')
+        // Split query into tokens
+        const tokens = queryLower
+            .replace(/[^\u0600-\u06FF\w\s]/g, ' ')
             .split(/\s+/)
             .filter(t => t.length > 2);
         
-        const textLower = text.toLowerCase();
-        let matches = 0;
+        if (tokens.length === 0) return 0;
         
-        for (const token of queryTokens) {
-            if (textLower.includes(token)) {
+        let matches = 0;
+        for (const token of tokens) {
+            if (searchableText.includes(token)) {
                 matches++;
             }
         }
         
-        return queryTokens.length > 0 ? matches / queryTokens.length : 0;
+        return matches / tokens.length;
     }
 
-    hybridSearch(query, queryVector, database, topK = 5) {
+    hybridSearch(query, queryVector, database, topK = 10) {
         const results = [];
         
         for (const item of database) {
             if (!item.vector || !Array.isArray(item.vector)) continue;
             
             const vectorScore = this.similarity(queryVector, item.vector);
+            const keywordScore = this.keywordScore(query, item);
             
-            const searchableText = [
-                item.name_ar,
-                item.name_en,
-                item.description,
-                item.activity_name,
-                item.location,
-                item.area_name
-            ].filter(Boolean).join(' ');
-            
-            const keywordScore = this.keywordScore(query, searchableText);
-            
-            const finalScore = (vectorScore * 0.7) + (keywordScore * 0.3);
+            // 75% vector, 25% keyword
+            const finalScore = (vectorScore * 0.75) + (keywordScore * 0.25);
             
             results.push({
                 id: item.id,
@@ -238,10 +219,10 @@ class HybridSearchEngine {
         const {
             topK = 5,
             useHybrid = true,
-            minScore = 0.3
+            minScore = 0.15  // Lower threshold for E5
         } = options;
         
-        console.log(`\n🔍 Search Query: "${query}"`);
+        console.log(`\n🔍 Query: "${query}"`);
         
         const queryVector = await this.embed(query);
         const targetDatabases = await this.classifyIntent(queryVector);
@@ -252,15 +233,15 @@ class HybridSearchEngine {
             const database = this.databases[dbName];
             
             if (!database || database.length === 0) {
-                console.warn(`⚠️ Database "${dbName}" is empty or missing`);
+                console.warn(`⚠️ Empty: ${dbName}`);
                 continue;
             }
             
-            console.log(`🔎 Searching in [${dbName}] (${database.length} items)...`);
+            console.log(`🔎 Searching [${dbName}] (${database.length} items)...`);
             
             const results = useHybrid 
-                ? this.hybridSearch(query, queryVector, database, topK)
-                : this.vectorSearch(queryVector, database, topK);
+                ? this.hybridSearch(query, queryVector, database, topK * 2)
+                : this.vectorSearch(queryVector, database, topK * 2);
             
             results.forEach(r => {
                 r.source = dbName;
@@ -273,7 +254,13 @@ class HybridSearchEngine {
             .filter(r => (r.finalScore || r.score) >= minScore)
             .slice(0, topK);
         
-        const response = {
+        console.log(`✅ Found ${finalResults.length} results`);
+        if (finalResults.length > 0) {
+            const top = finalResults[0];
+            console.log(`🏆 Top: ${top.id} (${Math.round((top.finalScore || top.score) * 100)}%) [${top.source}]`);
+        }
+        
+        return {
             query: query,
             targetDatabases: targetDatabases,
             resultsCount: finalResults.length,
@@ -281,15 +268,7 @@ class HybridSearchEngine {
             topMatch: finalResults[0] || null,
             confidence: finalResults[0] ? (finalResults[0].finalScore || finalResults[0].score) : 0
         };
-        
-        console.log(`✅ Found ${finalResults.length} results`);
-        if (finalResults.length > 0) {
-            console.log(`🏆 Top match: ${finalResults[0].id} (${Math.round(response.confidence * 100)}%) from [${finalResults[0].source}]`);
-        }
-        
-        return response;
     }
 }
 
 export const hybridEngine = new HybridSearchEngine();
-
