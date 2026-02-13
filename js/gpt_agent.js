@@ -3514,10 +3514,8 @@ window.addEventListener('load', function() {
 });
 
 console.log('✅ GPT Agent v9.0 - Core initialized!');
+console.log('✅ GPT Agent v9.0 - Ultimate Precision Edition initialized successfully!');
+console.log('🎯 Features: Advanced NLP • 100% Data Extraction • Decision 104 Integration • Smart Memory');
+console.log('🆕 Smart Action Button: ENABLED ✨');
 
-    console.log('✅ GPT Agent v9.0 - Ultimate Precision Edition initialized successfully!');
-    console.log('🎯 Features: Advanced NLP • 100% Data Extraction • Decision 104 Integration • Smart Memory');
-    console.log('🆕 Smart Action Button: ENABLED ✨');
-    console.log('🆕 Mobile Optimized: ENABLED 📱');
-    console.log('🆕 Fullscreen Expand: ENABLED 🖥️');
-}
+} // <--- هذا القوس يغلق بلوك الـ else المفتوح في السطر 18
