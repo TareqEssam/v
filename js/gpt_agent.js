@@ -1549,8 +1549,7 @@ async function processUserQuery(query) {
     const endTime = performance.now();
     console.log(`📊 تحليل شامل في ${(endTime - startTime).toFixed(2)}ms`);
 
-    // 🚀 [التوجيه الهجين النهائي - Hybrid Decision Logic]
-
+    
     // 🚀 [التوجيه العبقري المدمج - Hybrid Decision]
 
     // أ. [المسار الفائق] إذا وجد المحرك المتجهي نتيجة قطعية جداً (ثقة أعلى من 92%)
@@ -1587,28 +1586,26 @@ async function processUserQuery(query) {
     if (hasIncentiveKeywords || vectorTargetDB === 'decision104' || vectorTargetDB === 'activities' || deepIntent.intent === 'activity') {
         console.log("🎯 توجيه للأنشطة والقرار 104 (مسار المزايا والترخيص)");
         
-        // ج-1: محاولة القرار 104 أولاً إذا كان السؤال يحتوي على "إعفاء" أو "حافز"
+        // ج-1: محاولة القرار 104 أولاً إذا كان السؤال مالي أو المحرك اقترح ذلك
         if (hasIncentiveKeywords || vectorTargetDB === 'decision104') {
             const res104 = await handleDecision104Query(query, questionType);
-            // إذا وجد نتيجة حقيقية في القرار 104 نرجعها فوراً
+            // إذا وجد نتيجة حقيقية في القرار 104 نرجعها
             if (res104 && !res104.includes('لم أجد معلومات')) return res104;
         }
 
-        // ج-2: إذا لم يكن السؤال عن القرار 104 أو لم يجد نتيجة، نبحث في تراخيص الأنشطة
+        // ج-2: البحث في تراخيص الأنشطة (كخيار أول أو كبديل للقرار 104)
         const resAct = await handleActivityQuery(query, questionType, analysisContext, entities);
         if (resAct) return resAct;
     }
-        const response = await handleActivityQuery(query, questionType, analysisContext, entities);
-        if (response) return response;
-    }
 
-    // ج. فحص الحاجة للتوضيح (إذا كان هناك تعارض في النوايا ولم تحسمها المتجهات)
+    // د. [آلية التوضيح] - إذا كان هناك تعارض في النوايا ولم تحسمها المتجهات أو الكلمات
     if (analysisContext.needsClarification && (!vectorMatch || vectorMatch.score < 0.80)) {
+        console.log("🤔 محاولة طلب توضيح بسبب الالتباس");
         const clarification = requestClarification(query, analysisContext, entities, questionType);
         if (clarification) return clarification;
     }
     
-    // د. التوجيه النهائي (Logic Fallback)
+    // هـ. [منطق الاحتياط النهائي - Logic Fallback]
     const isClearlyIndustrial = checkIfIndustrialQuestion(query, questionType, analysisContext, entities);
     const isClearlyActivity = checkIfActivityQuestion(query, questionType, analysisContext, entities);
     
@@ -1621,18 +1618,20 @@ async function processUserQuery(query) {
     if (finalRecommendation === 'areas' || (isClearlyIndustrial && !isClearlyActivity)) {
         const res = await handleIndustrialQuery(query, questionType, analysisContext, entities);
         if (res) return res;
+        // محاولة الأنشطة كبديل أخير
         return await handleActivityQuery(query, questionType, analysisContext, entities);
     } 
     
     if (finalRecommendation === 'activities' || (isClearlyActivity && !isClearlyIndustrial)) {
         const res = await handleActivityQuery(query, questionType, analysisContext, entities);
         if (res) return res;
+        // محاولة المناطق كبديل أخير
         return await handleIndustrialQuery(query, questionType, analysisContext, entities);
     }
 
-    // هـ. محاولة أخيرة باستخدام المعنى المتجهي الصافي (حتى لو كانت الثقة متوسطة)
+    // و. [محاولة أخيرة بالمتجهات] باستخدام المعنى المتجهي الصافي (حتى لو كانت الثقة متوسطة 70%)
     if (vectorMatch && vectorMatch.score > 0.70) {
-        console.log("🔍 محاولة أخيرة باستخدام البحث المتجهي...");
+        console.log("🔍 محاولة أخيرة باستخدام البحث المتجهي (ثقة متوسطة)...");
         if (vectorTargetDB === 'activities') {
             const act = masterActivityDB.find(a => a.value === vectorMatch.id);
             if (act) { await AgentMemory.setActivity(act, query); return formatActivityResponse(act, questionType); }
@@ -1642,9 +1641,9 @@ async function processUserQuery(query) {
         }
     }
 
-    console.log("❌ لم يتم العثور على إجابة دقيقة");
+    // ز. الرد الافتراضي في حال فشل كل ما سبق
+    console.log("❌ لم يتم العثور على إجابة دقيقة عبر كافة المسارات");
     return generateDefaultResponse(query);
-}
 // ==================== 📝 تنسيق رسالة السياق ====================
 function formatContextMessage(contextAnalysis) {
     if (!contextAnalysis.related || !contextAnalysis.context) return null;
@@ -3523,6 +3522,7 @@ console.log('✅ GPT Agent v9.0 - Core initialized!');
     console.log('🆕 Fullscreen Expand: ENABLED 🖥️');
 
 }
+
 
 
 
