@@ -9,6 +9,8 @@
  * ✓ نظام ذاكرة سياقية ذكي
  * ✓ واجهة مستخدم تفاعلية محسنة
  ****************************************************************************/
+import { hybridEngine } from './HybridSearchV1.js';
+
 // تهيئة كائن الوكيل العالمي لربط الملفات
 window.GPT_AGENT = window.GPT_AGENT || {};
 
@@ -3499,3 +3501,4 @@ console.log('✅ GPT Agent v9.0 - Core initialized!');
     console.log('🆕 Fullscreen Expand: ENABLED 🖥️');
 
 }
+
