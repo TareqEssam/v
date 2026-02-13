@@ -1084,10 +1084,12 @@ const DeepIntentAnalyzer = {
 
 // ==================== دوال مساعدة جديدة ====================
 // ==================== 🔍 البحث في المناطق الصناعية باستخدام NeuralSearch ====================
-function searchIndustrialZonesWithNeural(query) {
-       const q = normalizeArabic(query);
+window.searchIndustrialZonesWithNeural = function(query) {
+    const q = window.normalizeArabic(query); // استخدام النسخة العالمية
+    
     // منع البحث إذا كانت الكلمة هي فقط "المحافظة" أو "الجهة"
     if (q === 'المحافظه' || q === 'المحافظة' || q === 'الجهه' || q === 'الجهة') return null;
+    
     if (typeof industrialAreasData === 'undefined' || !industrialAreasData) {
         console.error("❌ قاعدة بيانات المناطق غير متوفرة");
         return null;
@@ -1098,7 +1100,7 @@ function searchIndustrialZonesWithNeural(query) {
     // استخدام NeuralSearch الموحد
     const searchResults = NeuralSearch(query, industrialAreasData, {
         minScore: 50,
-        exclude: [] // لا نستبعد أي كلمات في المناطق
+        exclude: [] 
     });
     
     console.log(`📊 نتائج NeuralSearch: ${searchResults.results.length} منطقة`);
@@ -1107,21 +1109,19 @@ function searchIndustrialZonesWithNeural(query) {
         return null;
     }
     
-    // أفضل نتيجة
     const topResult = searchResults.results[0];
     
-    // إذا كانت الثقة عالية جداً (نقاط > 1000)، نرجع مباشرة
+    // 1. فحص الثقة العالية (1000+)
     if (topResult.finalScore >= 1000) {
         console.log(`✅ نتيجة بثقة عالية جداً (${topResult.finalScore}):`, topResult.originalData.name);
         return topResult.originalData;
     }
     
-    // إذا كانت هناك عدة نتائج متقاربة، نخزنها للتوضيح
+    // 2. آلية التوضيح عند تقارب النتائج (Ambiguity Logic)
     if (searchResults.results.length >= 2) {
         const secondScore = searchResults.results[1].finalScore;
         const scoreDiff = topResult.finalScore - secondScore;
         
-        // إذا كان الفرق صغير (أقل من 200 نقطة)، نطلب التوضيح
         if (scoreDiff < 200 && secondScore >= 300) {
             console.log("⚠️ عدة نتائج متقاربة - طلب توضيح");
             AgentMemory.setClarification(searchResults.results.slice(0, 3).map(r => ({
@@ -1134,17 +1134,16 @@ function searchIndustrialZonesWithNeural(query) {
         }
     }
     
-    // إذا كانت النقاط معقولة (> 300)، نرجع النتيجة
+    // 3. فحص الثقة الجيدة (300+)
     if (topResult.finalScore >= 300) {
         console.log(`✅ نتيجة بثقة جيدة (${topResult.finalScore}):`, topResult.originalData.name);
         return topResult.originalData;
     }
     
-    // نقاط ضعيفة - لا نرجع شيء
+    // 4. إهمال النتائج الضعيفة
     console.log(`⚠️ نقاط ضعيفة (${topResult.finalScore}) - لن نرجع نتيجة`);
     return null;
-}
-
+};
 
 
 
@@ -3502,5 +3501,6 @@ console.log('✅ GPT Agent v9.0 - Core initialized!');
     console.log('🆕 Fullscreen Expand: ENABLED 🖥️');
 
 }
+
 
 
