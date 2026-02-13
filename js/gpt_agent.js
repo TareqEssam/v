@@ -1462,17 +1462,17 @@ if (context.type === 'activity') {
     return false;
 }
  // ==================== المحرك الرئيسي ====================
+// ==================== المحرك الرئيسي المحدث (Hybrid Engine) ====================
 async function processUserQuery(query) {
     console.log("🚀 ========== بدء المعالجة الذكية (الهجينة) ==========");
     console.log("📝 السؤال الأصلي:", query);
 
-    // 1. التطهير الأولي وتحديد النوع (المنطق النصي السريع)
+    // 1. التطهير الأولي وتحديد النوع
     const q = normalizeArabic(query);
     const questionType = detectQuestionType(query);
     const context = AgentMemory.getContext();
 
     // 🎯 [أولوية مطلقة] الأسئلة الموجهة صراحة (Prefixes)
-    // لا نحتاج لذكاء اصطناعي هنا لأن المستخدم حدد وجهته يدوياً
     if (q.startsWith('المناطق الصناعيه:') || q.startsWith('مناطق صناعيه:') || q.startsWith('مناطق:')) {
         const actualQuery = query.replace(/^(المناطق الصناعيه:|مناطق صناعيه:|مناطق:)/i, '').trim();
         await AgentMemory.clear();
@@ -1485,38 +1485,29 @@ async function processUserQuery(query) {
         return await handleActivityQuery(actualQuery, detectQuestionType(actualQuery), null, null);
     }
 
-    // 🎯 [المسار السريع] فحص القرار 104 (بناءً على الكلمات المفتاحية الصريحة)
-    if (isDecision104Question(query)) {
+    // 🎯 [المسار السريع] فحص الكلمات المفتاحية الصريحة للقرار 104
+    if (typeof isDecision104Question === 'function' && isDecision104Question(query)) {
         console.log("🎯 توجيه صريح لمحرك القرار 104");
         const decision104Response = handleDecision104Query(query, questionType);
         if (decision104Response) return decision104Response;
     }
 
-    // 🧠 [المرحلة الجديدة: العقل المتجهي] 
-    // تحويل السؤال لمتجه والبحث في جميع القواعد في الخلفية
+    // 🧠 [المرحلة الجديدة: البحث المتجهي المحدث] 
     let vectorMatch = null;
     let vectorTargetDB = null;
 
     try {
         console.log("⏳ جاري استشارة المحرك المتجهي (فهم المعنى)...");
-        const vResults = await hybridEngine.search(query);
-        const vIntent = await hybridEngine.detectIntent(await hybridEngine.embedder(query, { pooling: 'mean', normalize: true }));
+        // استدعاء المحرك المحدث (يرجع intent و matches في استدعاء واحد)
+        const searchResponse = await hybridEngine.search(query);
         
-        if (vResults && vResults.length > 0 && vResults[0].score > 0.82) {
-            vectorMatch = vResults[0];
-            vectorTargetDB = vIntent;
-            console.log(`✨ العقل المتجهي وجد تطابقاً قوياً (${Math.round(vectorMatch.score*100)}%) في: ${vectorTargetDB}`);
+        if (searchResponse && searchResponse.matches && searchResponse.matches.length > 0) {
+            vectorMatch = searchResponse.matches[0]; // أفضل نتيجة
+            vectorTargetDB = searchResponse.intent;  // قاعدة البيانات الأنسب (activities, areas, decision104)
+            console.log(`✨ العقل المتجهي وجد تطابقاً (${Math.round(vectorMatch.score*100)}%) في: ${vectorTargetDB}`);
         }
     } catch (e) {
-        console.warn("⚠️ فشل البحث المتجهي، الاعتماد على المنطق النصي فقط.");
-    }
-
-    // 🆕 [تحليل السياق]
-    const currentDbType = vectorTargetDB || detectQuestionDatabase(query);
-    const contextAnalysis = ContextManager.isRelatedToContext(query, currentDbType);
-    
-    if (contextAnalysis.related && contextAnalysis.context) {
-        console.log("💡 السياق المرتبط محفوظ:", contextAnalysis.context);
+        console.error("⚠️ فشل البحث المتجهي، الاعتماد على المنطق النصي:", e);
     }
 
     // 🔄 [إدارة الذاكرة والسياق]
@@ -1554,11 +1545,10 @@ async function processUserQuery(query) {
     const entities = extractEntities(query);
     const deepIntent = DeepIntentAnalyzer.analyze(query);
     const endTime = performance.now();
-    
     console.log(`📊 تحليل شامل في ${(endTime - startTime).toFixed(2)}ms`);
 
-    // 🚀 [التوجيه العبقري المدمج - Hybrid Decision]
-    
+    // 🚀 [التوجيه الهجين النهائي - Hybrid Decision Logic]
+
     // أ. إذا وجد المحرك المتجهي نتيجة "قطعية" (ثقة > 92%)
     if (vectorMatch && vectorMatch.score > 0.92) {
         console.log("🎯 اعتماد نتيجة المحرك المتجهي (ثقة فائقة)");
@@ -1569,27 +1559,27 @@ async function processUserQuery(query) {
             const area = industrialAreasData.find(a => a.name === vectorMatch.id);
             if (area) { await AgentMemory.setIndustrial(area, query); return formatIndustrialResponse(area); }
         } else if (vectorTargetDB === 'decision104') {
-             // للمتجهات في القرار 104، نمرر الـ ID مباشرة للمحرك
              return handleDecision104Query(vectorMatch.id, questionType);
         }
     }
 
-    // ب. استخدام DeepIntent مع دعم المتجهات
+    // ب. دمج DeepIntent مع إشارات المتجهات
+    // التوجيه للمناطق
     if ((deepIntent.intent === 'industrial' || vectorTargetDB === 'areas') && (deepIntent.confidence >= 80 || q.includes('منطق'))) {
         console.log("🎯 توجيه للمناطق (DeepIntent + Vector Signal)");
         const response = await handleIndustrialQuery(query, questionType, analysisContext, entities);
         if (response) return response;
     }
 
-    if ((deepIntent.intent === 'activity' || vectorTargetDB === 'activities') && (deepIntent.confidence >= 90)) {
+    // التوجيه للأنشطة
+    if ((deepIntent.intent === 'activity' || vectorTargetDB === 'activities') && (deepIntent.confidence >= 85)) {
         console.log("🎯 توجيه للأنشطة (DeepIntent + Vector Signal)");
-        await AgentMemory.clear();
         const response = await handleActivityQuery(query, questionType, analysisContext, entities);
         if (response) return response;
     }
 
-    // ج. فحص الحاجة للتوضيح (إذا كان هناك تعارض في النوايا)
-    if (analysisContext.needsClarification && !vectorMatch) {
+    // ج. فحص الحاجة للتوضيح (إذا كان هناك تعارض في النوايا ولم تحسمها المتجهات)
+    if (analysisContext.needsClarification && (!vectorMatch || vectorMatch.score < 0.80)) {
         const clarification = requestClarification(query, analysisContext, entities, questionType);
         if (clarification) return clarification;
     }
@@ -1598,7 +1588,7 @@ async function processUserQuery(query) {
     const isClearlyIndustrial = checkIfIndustrialQuestion(query, questionType, analysisContext, entities);
     const isClearlyActivity = checkIfActivityQuestion(query, questionType, analysisContext, entities);
     
-    // تطبيق التوصية مع ترجيح كفة المتجهات في حال التساوي
+    // ترجيح التوصية بناءً على التحليل النصي أو المتجهي
     let finalRecommendation = analysisContext.recommendation;
     if (finalRecommendation === 'ambiguous' && vectorTargetDB) {
         finalRecommendation = (vectorTargetDB === 'areas') ? 'areas' : 'activities';
@@ -1621,17 +1611,16 @@ async function processUserQuery(query) {
         console.log("🔍 محاولة أخيرة باستخدام البحث المتجهي...");
         if (vectorTargetDB === 'activities') {
             const act = masterActivityDB.find(a => a.value === vectorMatch.id);
-            if (act) return formatActivityResponse(act, questionType);
+            if (act) { await AgentMemory.setActivity(act, query); return formatActivityResponse(act, questionType); }
         } else if (vectorTargetDB === 'areas') {
             const area = industrialAreasData.find(a => a.name === vectorMatch.id);
-            if (area) return formatIndustrialResponse(area);
+            if (area) { await AgentMemory.setIndustrial(area, query); return formatIndustrialResponse(area); }
         }
     }
 
     console.log("❌ لم يتم العثور على إجابة دقيقة");
     return generateDefaultResponse(query);
 }
-
 // ==================== 📝 تنسيق رسالة السياق ====================
 function formatContextMessage(contextAnalysis) {
     if (!contextAnalysis.related || !contextAnalysis.context) return null;
