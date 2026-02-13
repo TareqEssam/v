@@ -185,10 +185,11 @@ document.head.appendChild(styleLink);
 
     // ==================== أدوات المعالجة اللغوية ====================
     
-    function normalizeArabic(text) {
+    // 1. دالة تنظيف النص (محدثة لتكون عالمية)
+    window.normalizeArabic = function(text) {
         if (!text) return "";
         return text.toString()
-        .replace(/[أإآٱ]/g, 'ا')
+            .replace(/[أإآٱ]/g, 'ا')
             .replace(/[ةه]/g, 'ه')
             .replace(/[ىي]/g, 'ي')
             .replace(/ؤ/g, 'و')
@@ -197,19 +198,19 @@ document.head.appendChild(styleLink);
             .replace(/\s+/g, ' ')
             .trim()
             .toLowerCase();
-    }
+    };
 
-    // جعلها عالمية ليراها ملف gpt_areas.js
-window.GPT_AGENT.stopWords = ['في', 'من', 'الى', 'على', 'عن', 'هل', 'ما', 'هو', 'هي', 'ذلك', 'تلك', 'لي', 'لك', 'كيف', 'ماذا', 'متى', 'اين', 'لماذا', 'كم'];
+    // 2. قائمة الكلمات المتوقفة
+    window.GPT_AGENT.stopWords = ['في', 'من', 'الى', 'على', 'عن', 'هل', 'ما', 'هو', 'هي', 'ذلك', 'تلك', 'لي', 'لك', 'كيف', 'ماذا', 'متى', 'اين', 'لماذا', 'كم'];
     
-    function extractKeywords(text) {
-    const normalized = normalizeArabic(text);
-    // الوصول للمصفوفة من خلال الكائن العالمي الذي عرفته في البداية
-    const stopWordsList = window.GPT_AGENT.stopWords || []; 
-    
-    return normalized.split(/\s+/)
-        .filter(word => word.length > 2 && !stopWordsList.includes(word));
-}
+    // 3. دالة استخراج الكلمات المفتاحية (محدثة لتكون عالمية)
+    window.extractKeywords = function(text) {
+        const normalized = window.normalizeArabic(text);
+        const stopWordsList = window.GPT_AGENT.stopWords || []; 
+        
+        return normalized.split(/\s+/)
+            .filter(word => word.length > 2 && !stopWordsList.includes(word));
+    };
 
     // كاشف نوع السؤال
 // كاشف نوع السؤال - الإصدار المحسّن
@@ -3501,4 +3502,5 @@ console.log('✅ GPT Agent v9.0 - Core initialized!');
     console.log('🆕 Fullscreen Expand: ENABLED 🖥️');
 
 }
+
 
