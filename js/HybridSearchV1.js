@@ -34,12 +34,17 @@ class HybridSearchEngine {
             this.vectors.areas = await loadJSON('areas_vectors.json');
             this.vectors.decision104 = await loadJSON('decision104_vectors.json');
 
-            // 3. تحويل جمل النوايا لمتجهات (Pre-calculation) - نسخة محسنة دلالياً
-            this.intentVectors = {
-                activities: await this.getVector('تراخيص الأنشطة الصناعية والخدمية والأوراق المطلوبة والسجل الصناعي والجهات المصدرة للترخيص ومستندات التشغيل'),
-                areas: await this.getVector('مواقع ومساحات وحدود المناطق الصناعية في المحافظات وجهات الولاية والأراضي الصناعية'),
-                decision104: await this.getVector('حوافز استثمارية وإعفاءات ضريبية ومزايا قرار ١٠٤ لسنة ٢٠٢٢ وقطاعات الاستثمار وتطوير البرمجيات والتكنولوجيا')
-            };
+            // js/HybridSearchV1.js -> داخل دالة initialize
+this.intentVectors = {
+    // نية إجرائية: تركز على المستندات والخطوات والجهات
+    activities: await this.getVector('Procedural requirements for industrial operating licenses and registration documents'),
+    
+    // نية جغرافية: تركز على المكان والمساحة والتبعية الإدارية
+    areas: await this.getVector('Geographic location of industrial zones and land coordination in Egyptian governorates'),
+    
+    // نية استحقاقية: تركز على المزايا المالية والحوافز الضريبية والقرارات السيادية للمستثمرين
+    decision104: await this.getVector('Investment incentives and tax exemptions and financial benefits under government decree 104')
+};
 
             this.isReady = true;
             console.log("✅ المحرك المتجهي جاهز للعمل 100%");
@@ -104,4 +109,5 @@ class HybridSearchEngine {
 }
 
 export const hybridEngine = new HybridSearchEngine();
+
 
