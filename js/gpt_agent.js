@@ -1552,98 +1552,94 @@ async function processUserQuery(query) {
     
     // 🚀 [التوجيه العبقري المدمج - Hybrid Decision]
 
-    // أ. [المسار الفائق] إذا وجد المحرك المتجهي نتيجة قطعية جداً (ثقة أعلى من 92%)
-    if (vectorMatch && vectorMatch.score > 0.92) {
-        console.log("🎯 اعتماد نتيجة المحرك المتجهي (ثقة فائقة)");
-        if (vectorTargetDB === 'activities') {
-            const act = masterActivityDB.find(a => a.value === vectorMatch.id);
-            if (act) { await AgentMemory.setActivity(act, query); return formatActivityResponse(act, questionType); }
-        } else if (vectorTargetDB === 'areas') {
-            const area = industrialAreasData.find(a => a.name === vectorMatch.id);
-            if (area) { await AgentMemory.setIndustrial(area, query); return formatIndustrialResponse(area); }
-        } else if (vectorTargetDB === 'decision104') {
-             // نمرر المعرف المتجهي مباشرة لمحرك القرار 104
-             return handleDecision104Query(vectorMatch.id, questionType);
-        }
+    // 🚀 [نظام التوجيه الهجين المطور - Advanced Hybrid Routing System]
+// ملاحظة: هذا النظام يعتمد "الدلالة المتجهة" كقائد، والتحليل النصي كـ "صمام أمان"
+
+const vectorConfidence = vectorMatch ? vectorMatch.score : 0;
+const searchTerm = (vectorMatch && vectorConfidence > 0.65) ? vectorMatch.id : query;
+
+// 1️⃣ [المسار الفائق - Super Fast Path] 
+// إذا كانت الثقة المتجهة قطعية (أعلى من 92%)، يتم التنفيذ الفوري دون مشاورات نصية
+if (vectorMatch && vectorConfidence > 0.92) {
+    console.log(`🎯 تنفيذ فوري (ثقة فائقة): ${vectorTargetDB} -> ${vectorMatch.id}`);
+    if (vectorTargetDB === 'activities') {
+        const act = masterActivityDB.find(a => a.value === vectorMatch.id);
+        if (act) { await AgentMemory.setActivity(act, query); return formatActivityResponse(act, questionType); }
+    } else if (vectorTargetDB === 'areas') {
+        const area = industrialAreasData.find(a => a.name === vectorMatch.id);
+        if (area) { await AgentMemory.setIndustrial(area, query); return formatIndustrialResponse(area); }
+    } else if (vectorTargetDB === 'decision104') {
+        return handleDecision104Query(vectorMatch.id, questionType);
     }
+}
 
-    // 🆕 صمام أمان دلالي: فحص وجود كلمات مفتاحية صريحة للقرار 104 (إعفاءات/حوافز)
-    const hasIncentiveKeywords = /إعفاء|اعفاء|حافز|حوافز|مزايا|١٠٤|104/.test(q);
+// 2️⃣ [الموجه الدلالي الذكي - Primary Semantic Router]
+// هنا يتم الاعتماد على النية (Intent) التي فهمها المحرك المتجهي لفتح القاعدة الصحيحة
+console.log(`🤖 توجيه دلالي: النية المكتشفة [${vectorTargetDB}] باستخدام المعرف [${searchTerm}]`);
 
-    // ب. [توجيه المناطق] - تم تشديد الشروط (80% على الأقل) لمنع الانجراف الخاطئ
-    const isVectorAreaStrong = (vectorTargetDB === 'areas' && vectorMatch.score >= 0.80);
-    const isDeepAreaStrong = (deepIntent.intent === 'industrial' && deepIntent.confidence >= 80);
-    const explicitlyMentionedArea = q.includes('منطق');
+if (vectorTargetDB === 'decision104' && (vectorConfidence > 0.70 || /إعفاء|حافز|مزايا|١٠٤|104/.test(q))) {
+    // المساعد فهم أن السؤال "استحقاقي/مالي" -> التوجيه للقرار 104
+    const res104 = await handleDecision104Query(searchTerm, questionType);
+    if (res104 && !res104.includes('لم أجد معلومات')) return res104;
+}
 
-    // لا يذهب للمناطق إذا وجدنا كلمات "إعفاءات" إلا لو كان السؤال صريحاً جداً عن اسم منطقة
-    if ((isVectorAreaStrong || isDeepAreaStrong || explicitlyMentionedArea) && !hasIncentiveKeywords) {
-        console.log("🎯 توجيه للمناطق (مسار جغرافي)");
-        const response = await handleIndustrialQuery(query, questionType, analysisContext, entities);
-        if (response) return response;
+if (vectorTargetDB === 'activities' && (vectorConfidence > 0.70 || deepIntent.intent === 'activity')) {
+    // المساعد فهم أن السؤال "إجرائي/تراخيص" -> التوجيه لقاعدة الأنشطة
+    const resAct = await handleActivityQuery(searchTerm, questionType, analysisContext, entities);
+    if (resAct) return resAct;
+}
+
+if (vectorTargetDB === 'areas' && (vectorConfidence > 0.75 || q.includes('منطق'))) {
+    // المساعد فهم أن السؤال "جغرافي/مواقع" -> التوجيه لقاعدة المناطق
+    // ملحوظة: لم نستخدم searchTerm هنا مباشرة للسماح لـ handleIndustrialQuery بالتعامل مع المحافظات
+    const resArea = await handleIndustrialQuery(query, questionType, analysisContext, entities);
+    if (resArea) return resArea;
+}
+
+// 3️⃣ [آلية التوضيح والالتباس - Ambiguity Resolution]
+// إذا كانت النوايا متقاربة أو الثقة المتجهة متوسطة، نطلب من المستخدم التحديد
+if (analysisContext.needsClarification && vectorConfidence < 0.85) {
+    console.log("🤔 نية غير حاسمة دلالياً، طلب توضيح من المستخدم");
+    const clarification = requestClarification(query, analysisContext, entities, questionType);
+    if (clarification) return clarification;
+}
+
+// 4️⃣ [منطق الاحتياط الهجين - Hybrid Fallback Safeguard]
+// في حال فشل التوجيه الدلالي (مثل نقص البيانات في ملف المتجهات)، نعود للمنطق النصي التحليلي
+console.log("🛡️ تفعيل صمام الأمان: البحث في المسارات البديلة");
+
+const isClearlyIndustrial = checkIfIndustrialQuestion(query, questionType, analysisContext, entities);
+const isClearlyActivity = checkIfActivityQuestion(query, questionType, analysisContext, entities);
+
+// تطبيق التوصية النهائية بناءً على تحليل السياق الشامل
+if (analysisContext.recommendation === 'areas' || (isClearlyIndustrial && !isClearlyActivity)) {
+    const res = await handleIndustrialQuery(query, questionType, analysisContext, entities);
+    if (res) return res;
+    return await handleActivityQuery(query, questionType, analysisContext, entities);
+} 
+
+if (analysisContext.recommendation === 'activities' || (isClearlyActivity && !isClearlyIndustrial)) {
+    const res = await handleActivityQuery(query, questionType, analysisContext, entities);
+    if (res) return res;
+    return await handleIndustrialQuery(query, questionType, analysisContext, entities);
+}
+
+// 5️⃣ [محاولة الإنقاذ الأخيرة - Last Resort Vector Search]
+// محاولة إيجاد أي صلة دلالية حتى لو كانت الثقة 70% فقط قبل الاستسلام
+if (vectorMatch && vectorConfidence > 0.70) {
+    console.log("🔍 محاولة إنقاذ أخيرة بالمتجهات...");
+    if (vectorTargetDB === 'activities') {
+        const act = masterActivityDB.find(a => a.value === vectorMatch.id);
+        if (act) { await AgentMemory.setActivity(act, query); return formatActivityResponse(act, questionType); }
+    } else if (vectorTargetDB === 'areas') {
+        const area = industrialAreasData.find(a => a.name === vectorMatch.id);
+        if (area) { await AgentMemory.setIndustrial(area, query); return formatIndustrialResponse(area); }
     }
+}
 
-    // ج. [توجيه القرار 104 أو الأنشطة] - الأولوية القصوى عند وجود كلمات مالية أو نية واضحة
-    if (hasIncentiveKeywords || vectorTargetDB === 'decision104' || vectorTargetDB === 'activities' || deepIntent.intent === 'activity') {
-        console.log("🎯 توجيه للأنشطة والقرار 104 (مسار المزايا والترخيص)");
-        
-        // ج-1: محاولة القرار 104 أولاً إذا كان السؤال مالي أو المحرك اقترح ذلك
-        if (hasIncentiveKeywords || vectorTargetDB === 'decision104') {
-            const res104 = await handleDecision104Query(query, questionType);
-            // إذا وجد نتيجة حقيقية في القرار 104 نرجعها
-            if (res104 && !res104.includes('لم أجد معلومات')) return res104;
-        }
-
-        // ج-2: البحث في تراخيص الأنشطة (كخيار أول أو كبديل للقرار 104)
-        const resAct = await handleActivityQuery(query, questionType, analysisContext, entities);
-        if (resAct) return resAct;
-    }
-
-    // د. [آلية التوضيح] - إذا كان هناك تعارض في النوايا ولم تحسمها المتجهات أو الكلمات
-    if (analysisContext.needsClarification && (!vectorMatch || vectorMatch.score < 0.80)) {
-        console.log("🤔 محاولة طلب توضيح بسبب الالتباس");
-        const clarification = requestClarification(query, analysisContext, entities, questionType);
-        if (clarification) return clarification;
-    }
-    
-    // هـ. [منطق الاحتياط النهائي - Logic Fallback]
-    const isClearlyIndustrial = checkIfIndustrialQuestion(query, questionType, analysisContext, entities);
-    const isClearlyActivity = checkIfActivityQuestion(query, questionType, analysisContext, entities);
-    
-    // ترجيح التوصية بناءً على التحليل النصي أو المتجهي
-    let finalRecommendation = analysisContext.recommendation;
-    if (finalRecommendation === 'ambiguous' && vectorTargetDB) {
-        finalRecommendation = (vectorTargetDB === 'areas') ? 'areas' : 'activities';
-    }
-
-    if (finalRecommendation === 'areas' || (isClearlyIndustrial && !isClearlyActivity)) {
-        const res = await handleIndustrialQuery(query, questionType, analysisContext, entities);
-        if (res) return res;
-        // محاولة الأنشطة كبديل أخير
-        return await handleActivityQuery(query, questionType, analysisContext, entities);
-    } 
-    
-    if (finalRecommendation === 'activities' || (isClearlyActivity && !isClearlyIndustrial)) {
-        const res = await handleActivityQuery(query, questionType, analysisContext, entities);
-        if (res) return res;
-        // محاولة المناطق كبديل أخير
-        return await handleIndustrialQuery(query, questionType, analysisContext, entities);
-    }
-
-    // و. [محاولة أخيرة بالمتجهات] باستخدام المعنى المتجهي الصافي (حتى لو كانت الثقة متوسطة 70%)
-    if (vectorMatch && vectorMatch.score > 0.70) {
-        console.log("🔍 محاولة أخيرة باستخدام البحث المتجهي (ثقة متوسطة)...");
-        if (vectorTargetDB === 'activities') {
-            const act = masterActivityDB.find(a => a.value === vectorMatch.id);
-            if (act) { await AgentMemory.setActivity(act, query); return formatActivityResponse(act, questionType); }
-        } else if (vectorTargetDB === 'areas') {
-            const area = industrialAreasData.find(a => a.name === vectorMatch.id);
-            if (area) { await AgentMemory.setIndustrial(area, query); return formatIndustrialResponse(area); }
-        }
-    }
-
-    // ز. الرد الافتراضي في حال فشل كل ما سبق
-    console.log("❌ لم يتم العثور على إجابة دقيقة عبر كافة المسارات");
-    return generateDefaultResponse(query);
+// 6️⃣ [الرد الافتراضي - Default Fallback]
+console.log("❌ فشل الوصول لإجابة عبر كافة المحركات");
+return generateDefaultResponse(query);
     }
 // ==================== 📝 تنسيق رسالة السياق ====================
 function formatContextMessage(contextAnalysis) {
@@ -3522,4 +3518,5 @@ console.log('✅ GPT Agent v9.0 - Core initialized!');
     console.log('🆕 Mobile Optimized: ENABLED 📱');
     console.log('🆕 Fullscreen Expand: ENABLED 🖥️');
 }
+
 
