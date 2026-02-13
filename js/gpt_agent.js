@@ -1551,7 +1551,9 @@ async function processUserQuery(query) {
 
     // 🚀 [التوجيه الهجين النهائي - Hybrid Decision Logic]
 
-    // أ. إذا وجد المحرك المتجهي نتيجة "قطعية" (ثقة > 92%)
+    // 🚀 [التوجيه العبقري المدمج - Hybrid Decision]
+
+    // أ. [المسار الفائق] إذا وجد المحرك المتجهي نتيجة قطعية جداً (ثقة أعلى من 92%)
     if (vectorMatch && vectorMatch.score > 0.92) {
         console.log("🎯 اعتماد نتيجة المحرك المتجهي (ثقة فائقة)");
         if (vectorTargetDB === 'activities') {
@@ -1561,21 +1563,41 @@ async function processUserQuery(query) {
             const area = industrialAreasData.find(a => a.name === vectorMatch.id);
             if (area) { await AgentMemory.setIndustrial(area, query); return formatIndustrialResponse(area); }
         } else if (vectorTargetDB === 'decision104') {
+             // نمرر المعرف المتجهي مباشرة لمحرك القرار 104
              return handleDecision104Query(vectorMatch.id, questionType);
         }
     }
 
-    // ب. دمج DeepIntent مع إشارات المتجهات
-    // التوجيه للمناطق
-    if ((deepIntent.intent === 'industrial' || vectorTargetDB === 'areas') && (deepIntent.confidence >= 80 || q.includes('منطق'))) {
-        console.log("🎯 توجيه للمناطق (DeepIntent + Vector Signal)");
+    // 🆕 صمام أمان دلالي: فحص وجود كلمات مفتاحية صريحة للقرار 104 (إعفاءات/حوافز)
+    const hasIncentiveKeywords = /إعفاء|اعفاء|حافز|حوافز|مزايا|١٠٤|104/.test(q);
+
+    // ب. [توجيه المناطق] - تم تشديد الشروط (80% على الأقل) لمنع الانجراف الخاطئ
+    const isVectorAreaStrong = (vectorTargetDB === 'areas' && vectorMatch.score >= 0.80);
+    const isDeepAreaStrong = (deepIntent.intent === 'industrial' && deepIntent.confidence >= 80);
+    const explicitlyMentionedArea = q.includes('منطق');
+
+    // لا يذهب للمناطق إذا وجدنا كلمات "إعفاءات" إلا لو كان السؤال صريحاً جداً عن اسم منطقة
+    if ((isVectorAreaStrong || isDeepAreaStrong || explicitlyMentionedArea) && !hasIncentiveKeywords) {
+        console.log("🎯 توجيه للمناطق (مسار جغرافي)");
         const response = await handleIndustrialQuery(query, questionType, analysisContext, entities);
         if (response) return response;
     }
 
-    // التوجيه للأنشطة
-    if ((deepIntent.intent === 'activity' || vectorTargetDB === 'activities') && (deepIntent.confidence >= 85)) {
-        console.log("🎯 توجيه للأنشطة (DeepIntent + Vector Signal)");
+    // ج. [توجيه القرار 104 أو الأنشطة] - الأولوية القصوى عند وجود كلمات مالية أو نية واضحة
+    if (hasIncentiveKeywords || vectorTargetDB === 'decision104' || vectorTargetDB === 'activities' || deepIntent.intent === 'activity') {
+        console.log("🎯 توجيه للأنشطة والقرار 104 (مسار المزايا والترخيص)");
+        
+        // ج-1: محاولة القرار 104 أولاً إذا كان السؤال يحتوي على "إعفاء" أو "حافز"
+        if (hasIncentiveKeywords || vectorTargetDB === 'decision104') {
+            const res104 = await handleDecision104Query(query, questionType);
+            // إذا وجد نتيجة حقيقية في القرار 104 نرجعها فوراً
+            if (res104 && !res104.includes('لم أجد معلومات')) return res104;
+        }
+
+        // ج-2: إذا لم يكن السؤال عن القرار 104 أو لم يجد نتيجة، نبحث في تراخيص الأنشطة
+        const resAct = await handleActivityQuery(query, questionType, analysisContext, entities);
+        if (resAct) return resAct;
+    }
         const response = await handleActivityQuery(query, questionType, analysisContext, entities);
         if (response) return response;
     }
@@ -3501,6 +3523,7 @@ console.log('✅ GPT Agent v9.0 - Core initialized!');
     console.log('🆕 Fullscreen Expand: ENABLED 🖥️');
 
 }
+
 
 
 
