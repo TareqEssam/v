@@ -1,148 +1,322 @@
 /****************************************************************************
- * 🧠 HybridSearchEngine V2 - Surgical Semantic Router Edition
+ * 🧠 HybridSearchEngine V3 - Professional Semantic Router
  * 
- * الميزات الاحترافية:
- * 1. تصنيف النوايا الاحتمالي (Probabilistic Intent Classification)
- * 2. عزل النطاق المعرفي (Domain Isolation) لمنع تداخل القواعد
- * 3. دعم التوسع الديناميكي لقواعد بيانات جديدة
- * 4. تحسين الدقة باستخدام مرابط دلالية (Semantic Anchors) عالية الجودة
+ * Core Features:
+ * 1. Intelligent Intent Classification (Multi-Database Detection)
+ * 2. True Vector Search with Cosine Similarity
+ * 3. Hybrid Search (Semantic + Keyword Fusion)
+ * 4. Automatic Data Format Normalization
+ * 5. Production-Ready Error Handling
  ****************************************************************************/
 
 import { pipeline, env } from 'https://cdn.jsdelivr.net/npm/@xenova/transformers@2.17.1';
 
-// إعدادات البيئة للعمل على GitHub Pages و Hugging Face CDN
 env.allowLocalModels = false;
 env.useBrowserCache = true;
 
 class HybridSearchEngine {
     constructor() {
         this.embedder = null;
-        this.vectors = { activities: [], areas: [], decision104: [] };
-        this.intentAnchors = {};
+        this.databases = {
+            activities: [],
+            areas: [],
+            decision104: []
+        };
+        this.intentSignatures = {};
         this.isReady = false;
         
-        // عتبات الثقة لكل قاعدة لضبط الحساسية
-        this.thresholds = {
-            activities: 0.60,
-            areas: 0.70,      // المناطق تحتاج ثقة أعلى لمنع "سرقة" الأسئلة
-            decision104: 0.55 // القرار 104 حساس للكلمات المالية لذا العتبة مرنة
-        };
+        // Intent classification thresholds
+        this.intentThreshold = 0.35; // Minimum confidence to select a database
+        this.multiIntentThreshold = 0.30; // Threshold for multi-database queries
     }
 
     /**
-     * تهيئة المحرك وتحميل الموديل والبيانات
+     * Initialize the engine
      */
     async initialize() {
         if (this.isReady) return;
-        console.log("⏳ جاري تشغيل الموجه الدلالي (Semantic Router)...");
+        console.log("⏳ Initializing Semantic Router...");
         
         try {
-            // تحميل الموديل
+            // Load embedding model
             this.embedder = await pipeline('feature-extraction', 'Xenova/all-MiniLM-L6-v2');
             
-            // تحميل ملفات المتجهات
-            const loadJSON = async (filename) => {
+            // Load vector databases
+            const loadDatabase = async (filename) => {
                 const res = await fetch(`js/${filename}`);
-                if (!res.ok) throw new Error(`فشل تحميل: ${filename}`);
-                return res.json();
+                if (!res.ok) throw new Error(`Failed to load: ${filename}`);
+                const data = await res.json();
+                return this.normalizeData(data);
             };
 
-            [this.vectors.activities, this.vectors.areas, this.vectors.decision104] = await Promise.all([
-                loadJSON('activities_vectors.json'),
-                loadJSON('areas_vectors.json'),
-                loadJSON('decision104_vectors.json')
+            const [activities, areas, decision104] = await Promise.all([
+                loadDatabase('activities_vectors.json'),
+                loadDatabase('areas_vectors.json'),
+                loadDatabase('decision104_vectors.json')
             ]);
 
-            // توليد بصمات النوايا (Intent Fingerprints)
-            // ملاحظة: الوصف بالإنجليزية يعطي دقة فصل أعلى في هذا الموديل الصغير
-            this.intentAnchors = {
-                activities: await this.getVector('Administrative procedures, operating licenses, industrial registry, and official government documents for business setup'),
-                areas: await this.getVector('Geographic coordinates, industrial zones locations, land areas, and administrative dependency of regions'),
-                decision104: await this.getVector('Financial investment incentives, tax exemptions, strategic industry benefits, and council of ministers decree 104 rules')
+            this.databases.activities = activities;
+            this.databases.areas = areas;
+            this.databases.decision104 = decision104;
+
+            console.log(`✅ Loaded databases: activities(${activities.length}), areas(${areas.length}), decision104(${decision104.length})`);
+
+            // Create intent signatures (semantic fingerprints)
+            this.intentSignatures = {
+                activities: await this.embed('industrial activities, business operations, manufacturing processes, production stages, licenses, permits, regulatory requirements'),
+                areas: await this.embed('geographic locations, industrial zones, land areas, regional boundaries, coordinates, administrative regions'),
+                decision104: await this.embed('tax exemptions, financial incentives, investment benefits, customs duties, strategic industries, ministerial decree 104')
             };
 
             this.isReady = true;
-            console.log("✅ العقل المتجهي جاهز للفهم والتوجيه.");
+            console.log("✅ Hybrid Search Engine ready!");
         } catch (error) {
-            console.error("❌ خطأ في تهيئة النظام المتجهي:", error);
+            console.error("❌ Initialization error:", error);
             throw error;
         }
     }
 
     /**
-     * تحويل النص إلى متجه
+     * Normalize data from Object or Array format to unified Array format
      */
-    async getVector(text) {
-        if (!this.embedder) throw new Error("الموديل غير جاهز");
+    normalizeData(data) {
+        // Already an array
+        if (Array.isArray(data)) {
+            return data;
+        }
+        
+        // Convert object to array
+        if (typeof data === 'object' && data !== null) {
+            return Object.values(data);
+        }
+        
+        console.warn("⚠️ Unexpected data format, returning empty array");
+        return [];
+    }
+
+    /**
+     * Convert text to embedding vector
+     */
+    async embed(text) {
+        if (!this.embedder) throw new Error("Model not ready");
         const output = await this.embedder(text, { pooling: 'mean', normalize: true });
         return Array.from(output.data);
     }
 
     /**
-     * حساب التشابه الجيبي (Cosine Similarity)
+     * Calculate cosine similarity between two vectors
      */
-    cosineSimilarity(vecA, vecB) {
-        let dotProduct = 0, normA = 0, normB = 0;
+    similarity(vecA, vecB) {
+        let dot = 0, normA = 0, normB = 0;
         for (let i = 0; i < vecA.length; i++) {
-            dotProduct += vecA[i] * vecB[i];
+            dot += vecA[i] * vecB[i];
             normA += vecA[i] * vecA[i];
             normB += vecB[i] * vecB[i];
         }
-        return dotProduct / (Math.sqrt(normA) * Math.sqrt(normB));
+        return dot / (Math.sqrt(normA) * Math.sqrt(normB));
     }
 
     /**
-     * تصنيف نية السؤال (Surgical Intent Classification)
-     * يحدد أي قاعدة بيانات هي الأقرب دلالياً لسؤال المستخدم
+     * Classify user intent and determine target database(s)
+     * Returns array of databases to search, ordered by relevance
      */
     async classifyIntent(queryVector) {
-        let scores = [];
-        for (const [id, anchorVec] of Object.entries(this.intentAnchors)) {
-            const score = this.cosineSimilarity(anchorVec, queryVector);
-            scores.push({ id, score });
+        const scores = [];
+        
+        for (const [dbName, signature] of Object.entries(this.intentSignatures)) {
+            const score = this.similarity(signature, queryVector);
+            scores.push({ database: dbName, confidence: score });
         }
         
-        // ترتيب النوايا حسب الثقة
-        scores.sort((a, b) => b.score - a.score);
+        // Sort by confidence
+        scores.sort((a, b) => b.confidence - a.confidence);
         
-        console.log("📊 نتائج تحليل النية:", scores.map(s => `${s.id}: ${Math.round(s.score*100)}%`));
+        console.log("📊 Intent Analysis:", scores.map(s => 
+            `${s.database}: ${Math.round(s.confidence * 100)}%`
+        ).join(' | '));
         
-        // نرجع النية الأعلى بشرط تجاوز العتبة
-        const best = scores[0];
-        return best.score >= 0.40 ? best.id : 'activities'; // الافتراضي أنشطة
+        // Determine which databases to search
+        const targets = [];
+        
+        // Primary database (highest confidence)
+        if (scores[0].confidence >= this.intentThreshold) {
+            targets.push(scores[0].database);
+        }
+        
+        // Secondary databases (for complex queries)
+        for (let i = 1; i < scores.length; i++) {
+            if (scores[i].confidence >= this.multiIntentThreshold && 
+                scores[i].confidence > scores[0].confidence * 0.7) {
+                targets.push(scores[i].database);
+            }
+        }
+        
+        // Fallback: search all if no strong match
+        if (targets.length === 0) {
+            console.log("⚠️ No strong intent match, searching all databases");
+            return ['activities', 'areas', 'decision104'];
+        }
+        
+        console.log(`🎯 Target databases: [${targets.join(', ')}]`);
+        return targets;
     }
 
     /**
-     * البحث الهجين (البحث في النية أولاً ثم استخراج البيانات)
+     * Vector search within a specific database
      */
-    async search(query) {
-        if (!this.isReady) await this.initialize();
-
-        // 1. تحويل السؤال لمتجه
-        const queryVector = await this.getVector(query);
-
-        // 2. تحديد القاعدة المستهدفة (Routing)
-        const targetIntent = await this.classifyIntent(queryVector);
-        console.log(`🎯 توجيه ذكي للمسار: [${targetIntent}]`);
-
-        // 3. البحث فقط داخل القاعدة المستهدفة لضمان السرعة والدقة (Precision)
-        const candidates = this.vectors[targetIntent].map(item => ({
-            id: item.id,
-            score: this.cosineSimilarity(queryVector, item.vector)
-        }));
-
-        // 4. ترتيب النتائج
-        const matches = candidates
+    vectorSearch(queryVector, database, topK = 5) {
+        const results = [];
+        
+        for (const item of database) {
+            if (!item.vector || !Array.isArray(item.vector)) {
+                console.warn("⚠️ Invalid item (missing vector):", item.id);
+                continue;
+            }
+            
+            const score = this.similarity(queryVector, item.vector);
+            results.push({
+                id: item.id,
+                score: score,
+                data: item
+            });
+        }
+        
+        // Sort and return top K
+        return results
             .sort((a, b) => b.score - a.score)
-            .slice(0, 5);
+            .slice(0, topK);
+    }
 
-        return {
-            intent: targetIntent,
-            topMatch: matches[0] || null,
-            matches: matches,
-            confidence: matches[0]?.score || 0
+    /**
+     * Keyword-based scoring (for hybrid approach)
+     */
+    keywordScore(query, text) {
+        if (!text) return 0;
+        
+        const queryTokens = query.toLowerCase()
+            .replace(/[^\u0600-\u06FF\w\s]/g, '') // Keep Arabic + alphanumeric
+            .split(/\s+/)
+            .filter(t => t.length > 2);
+        
+        const textLower = text.toLowerCase();
+        let matches = 0;
+        
+        for (const token of queryTokens) {
+            if (textLower.includes(token)) {
+                matches++;
+            }
+        }
+        
+        return queryTokens.length > 0 ? matches / queryTokens.length : 0;
+    }
+
+    /**
+     * Hybrid search combining vector similarity and keyword matching
+     */
+    hybridSearch(query, queryVector, database, topK = 5) {
+        const results = [];
+        
+        for (const item of database) {
+            if (!item.vector || !Array.isArray(item.vector)) continue;
+            
+            // Vector similarity (70% weight)
+            const vectorScore = this.similarity(queryVector, item.vector);
+            
+            // Keyword matching (30% weight)
+            const searchableText = [
+                item.name_ar,
+                item.name_en,
+                item.description,
+                item.activity_name
+            ].filter(Boolean).join(' ');
+            
+            const keywordScore = this.keywordScore(query, searchableText);
+            
+            // Combined score
+            const finalScore = (vectorScore * 0.7) + (keywordScore * 0.3);
+            
+            results.push({
+                id: item.id,
+                vectorScore: vectorScore,
+                keywordScore: keywordScore,
+                finalScore: finalScore,
+                data: item
+            });
+        }
+        
+        return results
+            .sort((a, b) => b.finalScore - a.finalScore)
+            .slice(0, topK);
+    }
+
+    /**
+     * Main search function
+     */
+    async search(query, options = {}) {
+        if (!this.isReady) await this.initialize();
+        
+        const {
+            topK = 5,
+            useHybrid = true,
+            minScore = 0.3
+        } = options;
+        
+        console.log(`\n🔍 Search Query: "${query}"`);
+        
+        // Step 1: Convert query to vector
+        const queryVector = await this.embed(query);
+        
+        // Step 2: Classify intent and determine target databases
+        const targetDatabases = await this.classifyIntent(queryVector);
+        
+        // Step 3: Search in each target database
+        const allResults = [];
+        
+        for (const dbName of targetDatabases) {
+            const database = this.databases[dbName];
+            
+            if (!database || database.length === 0) {
+                console.warn(`⚠️ Database "${dbName}" is empty or missing`);
+                continue;
+            }
+            
+            console.log(`🔎 Searching in [${dbName}]...`);
+            
+            const results = useHybrid 
+                ? this.hybridSearch(query, queryVector, database, topK)
+                : this.vectorSearch(queryVector, database, topK);
+            
+            // Add database source to results
+            results.forEach(r => {
+                r.source = dbName;
+                allResults.push(r);
+            });
+        }
+        
+        // Step 4: Sort all results and filter by minimum score
+        const finalResults = allResults
+            .sort((a, b) => (b.finalScore || b.score) - (a.finalScore || a.score))
+            .filter(r => (r.finalScore || r.score) >= minScore)
+            .slice(0, topK);
+        
+        // Step 5: Return structured response
+        const response = {
+            query: query,
+            targetDatabases: targetDatabases,
+            resultsCount: finalResults.length,
+            results: finalResults,
+            topMatch: finalResults[0] || null,
+            confidence: finalResults[0] ? (finalResults[0].finalScore || finalResults[0].score) : 0
         };
+        
+        console.log(`✅ Found ${finalResults.length} results`);
+        if (finalResults.length > 0) {
+            console.log(`🏆 Top match: ${finalResults[0].id} (${Math.round(response.confidence * 100)}%)`);
+        }
+        
+        return response;
     }
 }
 
+// Export singleton instance
 export const hybridEngine = new HybridSearchEngine();
