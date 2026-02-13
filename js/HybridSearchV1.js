@@ -34,11 +34,11 @@ class HybridSearchEngine {
             this.vectors.areas = await loadJSON('areas_vectors.json');
             this.vectors.decision104 = await loadJSON('decision104_vectors.json');
 
-            // 3. تحويل جمل النوايا لمتجهات (Pre-calculation)
+            // 3. تحويل جمل النوايا لمتجهات (Pre-calculation) - نسخة محسنة دلالياً
             this.intentVectors = {
-                activities: await this.getVector('تراخيص وأوراق مطلوبة وإجراءات بدء نشاط'),
-                areas: await this.getVector('مواقع ومساحات المناطق الصناعية والمحافظات والتبعية'),
-                decision104: await this.getVector('حوافز وإعفاءات وقطاعات قرار رئيس الوزراء 104')
+                activities: await this.getVector('تراخيص الأنشطة الصناعية والخدمية والأوراق المطلوبة والسجل الصناعي والجهات المصدرة للترخيص ومستندات التشغيل'),
+                areas: await this.getVector('مواقع ومساحات وحدود المناطق الصناعية في المحافظات وجهات الولاية والأراضي الصناعية'),
+                decision104: await this.getVector('حوافز استثمارية وإعفاءات ضريبية ومزايا قرار ١٠٤ لسنة ٢٠٢٢ وقطاعات الاستثمار وتطوير البرمجيات والتكنولوجيا')
             };
 
             this.isReady = true;
@@ -104,3 +104,4 @@ class HybridSearchEngine {
 }
 
 export const hybridEngine = new HybridSearchEngine();
+
