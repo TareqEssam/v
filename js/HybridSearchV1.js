@@ -1,4 +1,4 @@
-/****************************************************************************
+this.embedder = await pipeline/****************************************************************************
  * 🧠 HybridSearchEngine V3.2 - Fixed JSON Structure
  ****************************************************************************/
 
@@ -27,7 +27,7 @@ class HybridSearchEngine {
         console.log("⏳ Initializing Semantic Router...");
         
         try {
-            this.embedder = await pipeline('feature-extraction', 'Xenova/all-MiniLM-L6-v2');
+            this.embedder = await pipeline('feature-extraction', 'Xenova/multilingual-e5-small');
             
             const loadDatabase = async (filename) => {
                 const res = await fetch(`js/${filename}`);
@@ -292,3 +292,4 @@ class HybridSearchEngine {
 }
 
 export const hybridEngine = new HybridSearchEngine();
+
