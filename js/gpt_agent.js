@@ -1463,73 +1463,72 @@ if (context.type === 'activity') {
     console.log("⚠️ غير محدد - افتراضياً غير مرتبط");
     return false;
 }
- // ==================== المحرك الرئيسي ====================
-// ==================== المحرك الرئيسي المحدث (Hybrid Engine) ====================
+ // ==================== 🚀 المحرك الرئيسي المطور (Hybrid Precision Engine V2) ====================
 async function processUserQuery(query) {
+    const startTime = performance.now();
     console.log("🚀 ========== بدء المعالجة الذكية (الهجينة) ==========");
     console.log("📝 السؤال الأصلي:", query);
 
-    // 1. التطهير الأولي وتحديد النوع
-    const q = normalizeArabic(query);
-    const questionType = detectQuestionType(query);
+    // 1️⃣ التطهير الأولي واستخراج السياق الأساسي
+    const q = window.normalizeArabic(query);
+    const questionType = window.detectQuestionType(query);
     const context = AgentMemory.getContext();
 
-    // 🎯 [أولوية مطلقة] الأسئلة الموجهة صراحة (Prefixes)
+    // 🎯 [المسار اليدوي] الأسئلة الموجهة صراحة (Prefixes) - أولوية مطلقة للمستخدم
     if (q.startsWith('المناطق الصناعيه:') || q.startsWith('مناطق صناعيه:') || q.startsWith('مناطق:')) {
         const actualQuery = query.replace(/^(المناطق الصناعيه:|مناطق صناعيه:|مناطق:)/i, '').trim();
         await AgentMemory.clear();
-        return await handleIndustrialQuery(actualQuery, detectQuestionType(actualQuery), null, null);
+        return await handleIndustrialQuery(actualQuery, window.detectQuestionType(actualQuery), null, null);
     }
 
     if (q.startsWith('الانشطه والتراخيص:') || q.startsWith('نشاط:') || q.startsWith('تراخيص:')) {
         const actualQuery = query.replace(/^(الانشطه والتراخيص:|نشاط:|تراخيص:)/i, '').trim();
         await AgentMemory.clear();
-        return await handleActivityQuery(actualQuery, detectQuestionType(actualQuery), null, null);
+        return await handleActivityQuery(actualQuery, window.detectQuestionType(actualQuery), null, null);
     }
 
-    // 🎯 [المسار السريع] فحص الكلمات المفتاحية الصريحة للقرار 104
+    // 🎯 [المسار السريع] فحص الكلمات المفتاحية الصريحة للقرار 104 قبل استهلاك موارد المتجهات
     if (typeof isDecision104Question === 'function' && isDecision104Question(query)) {
-        console.log("🎯 توجيه صريح لمحرك القرار 104");
+        console.log("🎯 توجيه صريح لمحرك القرار 104 (Keyword Trigger)");
         const decision104Response = handleDecision104Query(query, questionType);
         if (decision104Response) return decision104Response;
     }
 
-    // 🧠 [المرحلة الجديدة: البحث المتجهي المحدث] 
+    // 🧠 2️⃣ [المرحلة المتجهية: الموجه الدلالي الاحترافي V2]
     let vectorMatch = null;
     let vectorTargetDB = null;
+    let vectorConfidence = 0;
 
     try {
-        console.log("⏳ جاري استشارة المحرك المتجهي (فهم المعنى)...");
-        // استدعاء المحرك المحدث (يرجع intent و matches في استدعاء واحد)
+        console.log("⏳ جاري استشارة الموجه الدلالي (Semantic Routing)...");
         const searchResponse = await hybridEngine.search(query);
         
-        if (searchResponse && searchResponse.matches && searchResponse.matches.length > 0) {
-            vectorMatch = searchResponse.matches[0]; // أفضل نتيجة
-            vectorTargetDB = searchResponse.intent;  // قاعدة البيانات الأنسب (activities, areas, decision104)
-            console.log(`✨ العقل المتجهي وجد تطابقاً (${Math.round(vectorMatch.score*100)}%) في: ${vectorTargetDB}`);
+        if (searchResponse && searchResponse.topMatch) {
+            vectorMatch = searchResponse.topMatch; 
+            vectorTargetDB = searchResponse.intent;
+            vectorConfidence = searchResponse.confidence;
+            console.log(`✨ القرار الدلالي: القاعدة [${vectorTargetDB}] | المعرف [${vectorMatch.id}] | الثقة [${Math.round(vectorConfidence * 100)}%]`);
         }
     } catch (e) {
-        console.error("⚠️ فشل البحث المتجهي، الاعتماد على المنطق النصي:", e);
+        console.error("⚠️ فشل الموجه الدلالي، الاعتماد على التحليل النصي فقط:", e);
     }
 
-    // 🔄 [إدارة الذاكرة والسياق]
+    // 🔄 3️⃣ [إدارة الذاكرة والسياق] - الحفاظ على تسلسل الأفكار
     if (context && context.type !== 'clarification') {
         const isRelated = isQueryRelatedToContext(query, context);
         if (!isRelated) {
             console.log("🔄 سؤال جديد غير مرتبط - مسح السياق المؤقت");
             await AgentMemory.clear();
         } else {
-            const activeContext = AgentMemory.getContext(); 
-            const contextResponse = await handleContextualQuery(query, questionType, activeContext);
+            console.log("💡 السؤال مرتبط بالسياق الحالي، جاري المعالجة السياقية...");
+            const contextResponse = await handleContextualQuery(query, questionType, AgentMemory.getContext());
             if (contextResponse) return contextResponse;
         }
     }
     
-    // 🤔 [معالجة التوضيحات المعلقة]
+    // 🤔 4️⃣ [معالجة التوضيحات] - إذا كان المستخدم يختار من قائمة سابقة
     if (context && context.type === 'clarification') {
-        const choice = context.data.find(c => 
-            normalizeArabic(c.name).split(/\s+/).some(word => q.includes(word))
-        );
+        const choice = context.data.find(c => normalizeArabic(c.name).split(/\s+/).some(word => q.includes(word)));
         if (choice) {
             if (choice.type === 'industrial') {
                 AgentMemory.setIndustrial(choice.data, query);
@@ -1541,106 +1540,97 @@ async function processUserQuery(query) {
         }
     }
 
-    // 🛠️ [المرحلة التحليلية العميقة] 
-    const startTime = performance.now();
+    // 🛠️ 5️⃣ [التحليل العميق] - استخراج الكيانات والنية العميقة
     const analysisContext = analyzeContext(query, questionType);
     const entities = extractEntities(query);
     const deepIntent = DeepIntentAnalyzer.analyze(query);
-    const endTime = performance.now();
-    console.log(`📊 تحليل شامل في ${(endTime - startTime).toFixed(2)}ms`);
-
     
-    // 🚀 [التوجيه العبقري المدمج - Hybrid Decision]
+    // 🚀 6️⃣ [اتخاذ القرار الهجين - Hybrid Execution Logic]
 
-    // 🚀 [نظام التوجيه الهجين المطور - Advanced Hybrid Routing System]
-// ملاحظة: هذا النظام يعتمد "الدلالة المتجهة" كقائد، والتحليل النصي كـ "صمام أمان"
-
-const vectorConfidence = vectorMatch ? vectorMatch.score : 0;
-const searchTerm = (vectorMatch && vectorConfidence > 0.65) ? vectorMatch.id : query;
-
-// 1️⃣ [المسار الفائق - Super Fast Path] 
-// إذا كانت الثقة المتجهة قطعية (أعلى من 92%)، يتم التنفيذ الفوري دون مشاورات نصية
-if (vectorMatch && vectorConfidence > 0.92) {
-    console.log(`🎯 تنفيذ فوري (ثقة فائقة): ${vectorTargetDB} -> ${vectorMatch.id}`);
-    if (vectorTargetDB === 'activities') {
-        const act = masterActivityDB.find(a => a.value === vectorMatch.id);
-        if (act) { await AgentMemory.setActivity(act, query); return formatActivityResponse(act, questionType); }
-    } else if (vectorTargetDB === 'areas') {
-        const area = industrialAreasData.find(a => a.name === vectorMatch.id);
-        if (area) { await AgentMemory.setIndustrial(area, query); return formatIndustrialResponse(area); }
-    } else if (vectorTargetDB === 'decision104') {
-        return handleDecision104Query(vectorMatch.id, questionType);
+    // أ. [الثقة الفائقة] تنفيذ فوري إذا تجاوزت الثقة 92%
+    if (vectorMatch && vectorConfidence > 0.92) {
+        console.log("🎯 تنفيذ فوري (ثقة فائقة): اعتماد المعرف المتجهي");
+        if (vectorTargetDB === 'activities') {
+            const act = masterActivityDB.find(a => a.value === vectorMatch.id);
+            if (act) { await AgentMemory.setActivity(act, query); return formatActivityResponse(act, questionType); }
+        } else if (vectorTargetDB === 'areas') {
+            const area = industrialAreasData.find(a => a.name === vectorMatch.id);
+            if (area) { await AgentMemory.setIndustrial(area, query); return formatIndustrialResponse(area); }
+        } else if (vectorTargetDB === 'decision104') {
+             return handleDecision104Query(vectorMatch.id, questionType);
+        }
     }
-}
 
-// 2️⃣ [الموجه الدلالي الذكي - Primary Semantic Router]
-// هنا يتم الاعتماد على النية (Intent) التي فهمها المحرك المتجهي لفتح القاعدة الصحيحة
-console.log(`🤖 توجيه دلالي: النية المكتشفة [${vectorTargetDB}] باستخدام المعرف [${searchTerm}]`);
+    // ب. [التوجيه الدلالي الذكي] تنفيذ بناءً على النية المصنفة
+    if (vectorMatch && vectorConfidence > 0.65) {
+        const searchTerm = vectorMatch.id; // استخدام المعرف المقطّر دلالياً
+        
+        switch (vectorTargetDB) {
+            case 'decision104':
+                console.log("⚖️ مسار القرار 104 المتخصص");
+                const res104 = await handleDecision104Query(searchTerm, questionType);
+                if (res104 && !res104.includes('لم أجد معلومات')) return res104;
+                break;
 
-if (vectorTargetDB === 'decision104' && (vectorConfidence > 0.70 || /إعفاء|حافز|مزايا|١٠٤|104/.test(q))) {
-    // المساعد فهم أن السؤال "استحقاقي/مالي" -> التوجيه للقرار 104
-    const res104 = await handleDecision104Query(searchTerm, questionType);
-    if (res104 && !res104.includes('لم أجد معلومات')) return res104;
-}
+            case 'activities':
+                console.log("📋 مسار التراخيص والأنشطة");
+                const act = masterActivityDB.find(a => a.value === searchTerm);
+                if (act) {
+                    await AgentMemory.setActivity(act, query);
+                    return formatActivityResponse(act, questionType);
+                }
+                break;
 
-if (vectorTargetDB === 'activities' && (vectorConfidence > 0.70 || deepIntent.intent === 'activity')) {
-    // المساعد فهم أن السؤال "إجرائي/تراخيص" -> التوجيه لقاعدة الأنشطة
-    const resAct = await handleActivityQuery(searchTerm, questionType, analysisContext, entities);
-    if (resAct) return resAct;
-}
-
-if (vectorTargetDB === 'areas' && (vectorConfidence > 0.75 || q.includes('منطق'))) {
-    // المساعد فهم أن السؤال "جغرافي/مواقع" -> التوجيه لقاعدة المناطق
-    // ملحوظة: لم نستخدم searchTerm هنا مباشرة للسماح لـ handleIndustrialQuery بالتعامل مع المحافظات
-    const resArea = await handleIndustrialQuery(query, questionType, analysisContext, entities);
-    if (resArea) return resArea;
-}
-
-// 3️⃣ [آلية التوضيح والالتباس - Ambiguity Resolution]
-// إذا كانت النوايا متقاربة أو الثقة المتجهة متوسطة، نطلب من المستخدم التحديد
-if (analysisContext.needsClarification && vectorConfidence < 0.85) {
-    console.log("🤔 نية غير حاسمة دلالياً، طلب توضيح من المستخدم");
-    const clarification = requestClarification(query, analysisContext, entities, questionType);
-    if (clarification) return clarification;
-}
-
-// 4️⃣ [منطق الاحتياط الهجين - Hybrid Fallback Safeguard]
-// في حال فشل التوجيه الدلالي (مثل نقص البيانات في ملف المتجهات)، نعود للمنطق النصي التحليلي
-console.log("🛡️ تفعيل صمام الأمان: البحث في المسارات البديلة");
-
-const isClearlyIndustrial = checkIfIndustrialQuestion(query, questionType, analysisContext, entities);
-const isClearlyActivity = checkIfActivityQuestion(query, questionType, analysisContext, entities);
-
-// تطبيق التوصية النهائية بناءً على تحليل السياق الشامل
-if (analysisContext.recommendation === 'areas' || (isClearlyIndustrial && !isClearlyActivity)) {
-    const res = await handleIndustrialQuery(query, questionType, analysisContext, entities);
-    if (res) return res;
-    return await handleActivityQuery(query, questionType, analysisContext, entities);
-} 
-
-if (analysisContext.recommendation === 'activities' || (isClearlyActivity && !isClearlyIndustrial)) {
-    const res = await handleActivityQuery(query, questionType, analysisContext, entities);
-    if (res) return res;
-    return await handleIndustrialQuery(query, questionType, analysisContext, entities);
-}
-
-// 5️⃣ [محاولة الإنقاذ الأخيرة - Last Resort Vector Search]
-// محاولة إيجاد أي صلة دلالية حتى لو كانت الثقة 70% فقط قبل الاستسلام
-if (vectorMatch && vectorConfidence > 0.70) {
-    console.log("🔍 محاولة إنقاذ أخيرة بالمتجهات...");
-    if (vectorTargetDB === 'activities') {
-        const act = masterActivityDB.find(a => a.value === vectorMatch.id);
-        if (act) { await AgentMemory.setActivity(act, query); return formatActivityResponse(act, questionType); }
-    } else if (vectorTargetDB === 'areas') {
-        const area = industrialAreasData.find(a => a.name === vectorMatch.id);
-        if (area) { await AgentMemory.setIndustrial(area, query); return formatIndustrialResponse(area); }
+            case 'areas':
+                console.log("🏭 مسار المناطق الجغرافية");
+                // في المناطق، نفضل أحياناً النص الأصلي handleIndustrialQuery للتعامل مع "المحافظات"
+                const resArea = await handleIndustrialQuery(query, questionType, analysisContext, entities);
+                if (resArea) return resArea;
+                break;
+        }
     }
-}
 
-// 6️⃣ [الرد الافتراضي - Default Fallback]
-console.log("❌ فشل الوصول لإجابة عبر كافة المحركات");
-return generateDefaultResponse(query);
+    // ج. [آلية التوضيح] - إذا كان هناك التباس دلالي
+    if (analysisContext.needsClarification && vectorConfidence < 0.80) {
+        const clarification = requestClarification(query, analysisContext, entities, questionType);
+        if (clarification) return clarification;
     }
+    
+    // د. [صمام الأمان النهائي - Fallback] - العودة للمنطق النصي التقليدي
+    console.log("🛡️ تفعيل صمام الأمان: البحث في المسارات البديلة");
+    const isClearlyIndustrial = checkIfIndustrialQuestion(query, questionType, analysisContext, entities);
+    const isClearlyActivity = checkIfActivityQuestion(query, questionType, analysisContext, entities);
+    
+    if (analysisContext.recommendation === 'areas' || (isClearlyIndustrial && !isClearlyActivity)) {
+        const res = await handleIndustrialQuery(query, questionType, analysisContext, entities);
+        if (res) return res;
+        return await handleActivityQuery(query, questionType, analysisContext, entities);
+    } 
+    
+    if (analysisContext.recommendation === 'activities' || (isClearlyActivity && !isClearlyIndustrial)) {
+        const res = await handleActivityQuery(query, questionType, analysisContext, entities);
+        if (res) return res;
+        return await handleIndustrialQuery(query, questionType, analysisContext, entities);
+    }
+
+    // هـ. [محاولة الإنقاذ الأخيرة] - محاولة دلالية بحد أدنى من الثقة
+    if (vectorMatch && vectorConfidence > 0.50) {
+        console.log("🔍 محاولة إنقاذ أخيرة بالمعطيات المتجهية...");
+        if (vectorTargetDB === 'activities') {
+            const act = masterActivityDB.find(a => a.value === vectorMatch.id);
+            if (act) return formatActivityResponse(act, questionType);
+        } else if (vectorTargetDB === 'areas') {
+            const area = industrialAreasData.find(a => a.name === vectorMatch.id);
+            if (area) return formatIndustrialResponse(area);
+        }
+    }
+
+    const endTime = performance.now();
+    console.log(`⏱️ إجمالي زمن المعالجة: ${(endTime - startTime).toFixed(2)}ms`);
+
+    console.log("❌ لم يتم العثور على إجابة دقيقة عبر كافة المسارات");
+    return generateDefaultResponse(query);
+}
 // ==================== 📝 تنسيق رسالة السياق ====================
 function formatContextMessage(contextAnalysis) {
     if (!contextAnalysis.related || !contextAnalysis.context) return null;
@@ -3518,5 +3508,6 @@ console.log('✅ GPT Agent v9.0 - Core initialized!');
     console.log('🆕 Mobile Optimized: ENABLED 📱');
     console.log('🆕 Fullscreen Expand: ENABLED 🖥️');
 }
+
 
 
