@@ -2125,7 +2125,7 @@ function formatDependenciesCount(deps) {
         </a>`;
     }
 
-    function checkDecision104Full(activityName) {
+    window.checkDecision104Full = function(activityName) {
         if (typeof window.decision104 === 'undefined' || !window.decision104.unifiedSearchDB) {
             return null;
         }
@@ -2136,8 +2136,7 @@ function formatDependenciesCount(deps) {
         
         if (found) {
             return `<div class="decision-badge">
-                ⭐ هذا النشاط مدرج في القرار 104 لسنة 2022
-            </div>
+                ⭐ هذا النشاط مدرج في القرار 104 لسنة 2022            </div>
             <div class="info-card" style="background: linear-gradient(135deg, #fff9c4, #fffde7); border-left-color: #f57f17;">
                 <div class="info-card-header" style="color: #f57f17;">
                     🎯 تفاصيل القرار 104
@@ -3489,11 +3488,14 @@ window.handleActionButtonClick = handleActionButtonClick;
 window.autoResize = autoResize;
 window.handleEnter = handleEnter;
 window.AgentMemory = AgentMemory;
+window.checkDecision104Full = window.checkDecision104Full;
+    
 
 // ==================== 🆕 تصدير دوال الأزرار الذكية ====================
 window.gptAgent = window.gptAgent || {};
 window.gptAgent.showSmartSearchButtons = showSmartSearchButtons;
 window.gptAgent.smartSearch = smartSearchFixed;
+    
 
 // تهيئة حالة الزر عند تحميل الصفحة
 window.addEventListener('load', function() {
@@ -3508,6 +3510,7 @@ console.log('✅ GPT Agent v9.0 - Core initialized!');
     console.log('🆕 Mobile Optimized: ENABLED 📱');
     console.log('🆕 Fullscreen Expand: ENABLED 🖥️');
 }
+
 
 
 
