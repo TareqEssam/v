@@ -1644,6 +1644,7 @@ async function processUserQuery(query) {
     // ز. الرد الافتراضي في حال فشل كل ما سبق
     console.log("❌ لم يتم العثور على إجابة دقيقة عبر كافة المسارات");
     return generateDefaultResponse(query);
+    }
 // ==================== 📝 تنسيق رسالة السياق ====================
 function formatContextMessage(contextAnalysis) {
     if (!contextAnalysis.related || !contextAnalysis.context) return null;
@@ -3521,3 +3522,4 @@ console.log('✅ GPT Agent v9.0 - Core initialized!');
     console.log('🆕 Mobile Optimized: ENABLED 📱');
     console.log('🆕 Fullscreen Expand: ENABLED 🖥️');
 }
+
