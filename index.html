@@ -13,7 +13,6 @@
 	<!-- ... الكود الحالي لملف HTML ينتهي هنا ... -->
        <script src="js/activity_database.js"></script>
     <script src="js/neural_search_v6.js"></script>
-        <script src="js/decision104.js"></script>
 
 
 
@@ -4999,12 +4998,22 @@ input.bg-success {
 
              
 
-        <script src="js/gpt_agent.js"></script> <!-- يجب أن يكون الأول -->
-            <script src="js/gpt_activities.js"></script>
-            <script src="js/gpt_areas.js"></script>
-            <script src="js/gpt_decision104.js"></script>
+<!-- 1. الذاكرة أولاً (الأساس) -->
+<script src="js/agent_memory.js"></script>
 
+<!-- 2. ملفات القواعد النصية -->
+<script src="js/activities_data.js"></script>
+<script src="js/areas_data.js"></script>
+<script src="js/decision104.js"></script>
 
+<!-- 3. ملفات المعالجة (تعتمد على الذاكرة) -->
+<script src="js/gpt_activities.js"></script>
+<script src="js/gpt_areas.js"></script>
+<script src="js/gpt_decision104.js"></script>
+<script src="js/voice_agent.js"></script>
+
+<!-- 4. المساعد الهجين (الموديول) في النهاية -->
+<script type="module" src="js/gpt_agent.js"></script>
 
 
 
