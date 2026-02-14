@@ -1636,9 +1636,10 @@ async function executeByDB(result, questionType, originalQuery) {
             return formatIndustrialResponse(area);
         }
     } else if (dbName === 'decision104') {
-    // نرسل السؤال الأصلي لضمان استخراج اسم النشاط الذي كتبه المستخدم
-    return handleDecision104Query(originalQuery, questionType);
-}
+        // ✨ التعديل الجوهري: نرسل النتيجة التي وجدها المحرك الدلالي فعلياً (data)
+        // لكي لا يقوم ملف القرار بالبحث مرة أخرى ويخطئ
+        return handleDecision104Query(originalQuery, questionType, data);
+    }
     return null;
 }
 // ==================== 📝 تنسيق رسالة السياق ====================
@@ -2818,6 +2819,7 @@ console.log('✅ GPT Agent v9.0 - Core initialized!');
     console.log('🆕 Mobile Optimized: ENABLED 📱');
     console.log('🆕 Fullscreen Expand: ENABLED 🖥️');
 }
+
 
 
 
