@@ -515,7 +515,12 @@ function extractDependencies(normalizedQuery) {
         
         console.log(`🔍 فحص جهة: ${dep} - نسبة: ${Math.round(matchPercentage)}%`);
         
-        if (matchPercentage >= 30) {
+        // جراحة: إذا كان الاستعلام يحتوي على كلمات بحث، قلل الاعتماد على الفحص اللفظي الصارم
+        // واترك المجال للمحرك الدلالي لتحديد الارتباط
+        const hasSemanticWeight = normalizedQuery.length > 10;
+        const dynamicThreshold = hasSemanticWeight ? 10 : 30;
+
+        if (matchPercentage >= dynamicThreshold) {
             found.push({
                 name: dep,          // 🆕 اسم الجهة
                 score: matchScore,  // 🆕 النقاط
@@ -1575,19 +1580,13 @@ async function processUserQuery(query) {
             break;
 
         case 'activities':
-            console.log("📋 مسار التراخيص والأنشطة");
-            // البحث بالنص الأصلي أو البيانات المحفوظة
-            const activityData = vectorMatch.data?.original_data;
-            if (activityData && activityData.value) {
-                const act = masterActivityDB.find(a => a.value === activityData.value);
-                if (act) {
-                    await AgentMemory.setActivity(act, query);
-                    return formatActivityResponse(act, questionType);
-                }
+            console.log("📋 مسار التراخيص والأنشطة (الدلالي المباشر)");
+            // جراحة: ثق في نتيجة المتجه واستخدم بياناتها فوراً دون إعادة البحث نصياً
+            const directAct = vectorMatch.data?.original_data || vectorMatch.data;
+            if (directAct) {
+                await AgentMemory.setActivity(directAct, query);
+                return formatActivityResponse(directAct, questionType);
             }
-            // Fallback: البحث بالنص
-            const actRes = await handleActivityQuery(originalText, questionType, null, null);
-            if (actRes) return actRes;
             break;
 
         case 'areas':
@@ -3527,6 +3526,7 @@ console.log('✅ GPT Agent v9.0 - Core initialized!');
     console.log('🆕 Mobile Optimized: ENABLED 📱');
     console.log('🆕 Fullscreen Expand: ENABLED 🖥️');
 }
+
 
 
 
