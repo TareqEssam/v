@@ -1553,10 +1553,15 @@ async function processUserQuery(query) {
     
     // 🚀 6️⃣ [اتخاذ القرار الهجين - Hybrid Execution Logic]
 
-    // أ. [الثقة الفائقة] تنفيذ فوري إذا تجاوزت الثقة 92%
-    if (vectorMatch && vectorConfidence > 0.92) {
-        console.log("🎯 تنفيذ فوري (ثقة فائقة): اعتماد المعرف المتجهي");
-        if (vectorTargetDB === 'activities') {
+    // جراحة: لا تنفذ فوراً إلا إذا كانت الثقة الدلالية حقيقية (ليست ناتجة عن RRF فقط)
+    // وإذا كان المعرف يبدأ بـ decision104، نتأكد من إرساله للمحرك المتخصص دون "تنظيف"
+    if (vectorMatch && (vectorConfidence > 0.85 || vectorMatch.id.includes('decision104'))) {
+        console.log("🎯 توجيه دقيق للمحرك المتخصص بالمعرف:", vectorMatch.id);
+        
+        if (vectorTargetDB === 'decision104') {
+             // إرسال المعرف الخام دون السماح للمحركات الأخرى بتشويهه
+             return handleDecision104Query(vectorMatch.id, questionType);
+        }
             const act = masterActivityDB.find(a => a.value === vectorMatch.id);
             if (act) { await AgentMemory.setActivity(act, query); return formatActivityResponse(act, questionType); }
         } else if (vectorTargetDB === 'areas') {
@@ -3506,6 +3511,9 @@ window.autoResize = autoResize;
 window.handleEnter = handleEnter;
 window.AgentMemory = AgentMemory;
 window.checkDecision104Full = window.checkDecision104Full;
+window.formatSingleActivityInDecision104WithIncentives = formatSingleActivityInDecision104WithIncentives;
+window.formatSectorIncentivesEnhanced = formatSectorIncentivesEnhanced;
+window.formatActivityNotFoundInDecision104 = formatActivityNotFoundInDecision104;    
     
 
 // ==================== 🆕 تصدير دوال الأزرار الذكية ====================
@@ -3527,6 +3535,7 @@ console.log('✅ GPT Agent v9.0 - Core initialized!');
     console.log('🆕 Mobile Optimized: ENABLED 📱');
     console.log('🆕 Fullscreen Expand: ENABLED 🖥️');
 }
+
 
 
 
