@@ -1735,3 +1735,29 @@ function renderSingleMainSector(sector, mainSectorName) {
     return html;
 
 }
+/**
+ * جراحة: دالة تنظيف الاستعلام الذكية
+ * تمنع حذف رقم 104 إذا كان جزءاً من المعرف التقني (ID)
+ * وتزيل كلمات السؤال الشائعة لزيادة دقة البحث النصي
+ */
+function cleanQueryForSearch(query) {
+    if (!query) return "";
+    
+    // إذا كان الاستعلام معرفاً تقنياً، لا تلمسه إطلاقاً لضمان المطابقة
+    if (query.toString().includes('decision104_')) return query;
+    
+    // تنظيف الكلمات الزائدة من الأسئلة البشرية
+    return query.toString()
+                .replace(/هل/g, '')
+                .replace(/نشاط/g, '')
+                .replace(/بالقرار/g, '')
+                .replace(/قرار/g, '')
+                .replace(/104/g, '') // يحذف فقط من النص البشري
+                .replace(/لسنة/g, '')
+                .replace(/٢٠٢٢/g, '')
+                .replace(/\s+/g, ' ')
+                .trim();
+}
+
+// تصدير الدالة للنطاق العالمي
+window.cleanQueryForSearch = cleanQueryForSearch;
