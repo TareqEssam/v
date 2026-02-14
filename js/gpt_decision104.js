@@ -1466,7 +1466,7 @@ function formatSingleActivityInDecision104WithIncentives(activityName, itemData,
     const sectorLabel = isSectorA ? 'القطاع (أ)' : 'القطاع (ب)';
     const sectorColor = isSectorA ? '#4caf50' : '#2196f3';
     
-    // 🛡️ صمام الأمان: التأكد من أن النص ليس فارغاً قبل استخدام startsWith
+    // 🛡️ تعريف المتغير مرة واحدة فقط بشكل صحيح
     let mainTitle = itemData.activity || activityName || "نشاط غير معروف";
     let isLegalReference = false;
     
@@ -1474,58 +1474,48 @@ function formatSingleActivityInDecision104WithIncentives(activityName, itemData,
         isLegalReference = mainTitle.startsWith('(') || mainTitle.includes('بموجب نص المادة');
     }
     
+    // إذا كان مرجعاً قانونياً، نستخدم اسم النشاط من السؤال كعنوان
     if (isLegalReference) {
-        mainTitle = activityName; 
-    }
-    
-    let mainTitle = itemData.activity;
-    let isLegalReference = mainTitle.startsWith('(') || mainTitle.includes('بموجب نص المادة');
-    
-    if (isLegalReference) {
-        mainTitle = activityName;
+        mainTitle = activityName.replace(/^(هل|ما هي|ماهي|نشاط|مشاريع)\s+/g, '').replace(/\s+(وارد|بالقرار|موجود).*$/g, '');
     }
 
-    let html = `
-    <div class="info-card" style="background: linear-gradient(135deg, ${isSectorA ? '#e8f5e9' : '#e3f2fd'}, white); border-left: 6px solid ${sectorColor}; box-shadow: 0 4px 15px rgba(0,0,0,0.1);">
-        <div class="info-card-header" style="color: ${isSectorA ? '#2e7d32' : '#1565c0'}; border-bottom: 2px solid ${sectorColor}22; padding-bottom: 12px; margin-bottom: 15px; font-weight: bold;">
-            <i class="fas fa-file-signature"></i> نتيجة الفحص: النشاط مدرج بالقرار 104 لسنة 2022
+    return `
+    <div class="info-card" style="background: linear-gradient(135deg, ${isSectorA ? '#e8f5e9' : '#e3f2fd'}, white); border-left: 6px solid ${sectorColor};">
+        <div class="info-card-header" style="color: ${isSectorA ? '#2e7d32' : '#1565c0'}; border-bottom: 1px solid ${sectorColor}22; padding-bottom: 10px; margin-bottom: 15px;">
+            <i class="fas fa-check-circle"></i> نتيجة الفحص في القرار 104 لسنة 2022
         </div>
         
         <div class="info-card-content">
             <div style="margin-bottom: 20px;">
-                <div style="color: #666; font-size: 0.85rem; margin-bottom: 6px; letter-spacing: 0.5px;">النشاط المستعلم عنه:</div>
-                <div style="font-size: 1.3rem; font-weight: 800; color: #1a1a1a; line-height: 1.4; padding-right: 15px; border-right: 4px solid ${sectorColor}; text-transform: capitalize;">
+                <div style="color: #666; font-size: 0.85rem; margin-bottom: 4px;">📋 النشاط المستهدف:</div>
+                <div style="font-size: 1.25rem; font-weight: 800; color: #2c3e50; line-height: 1.4; border-right: 4px solid ${sectorColor}; padding-right: 12px;">
                     ${mainTitle}
                 </div>
                 ${isLegalReference ? `
-                <div style="background: #f8f9fa; padding: 10px 15px; border-radius: 8px; margin-top: 12px; font-size: 0.9rem; color: #4b6584; border: 1px solid #d1d8e0; line-height: 1.5;">
-                    <i class="fas fa-balance-scale-right"></i> <b>النص الرسمي بالقرار:</b> ${itemData.activity}
+                <div style="background: #f1f2f6; padding: 8px 12px; border-radius: 6px; margin-top: 10px; font-size: 0.85rem; color: #57606f;">
+                    <b>النص الرسمي:</b> ${itemData.activity}
                 </div>` : ''}
             </div>
 
             <div style="display: grid; grid-template-columns: 1fr; gap: 12px;">
-                <div style="background: white; padding: 12px 15px; border-radius: 12px; border-right: 5px solid ${sectorColor}; box-shadow: 0 2px 8px rgba(0,0,0,0.04);">
-                    <span style="color: #7f8c8d; font-size: 0.85rem;">📊 فئة الاستحقاق الضريبي:</span><br>
-                    <strong style="color: ${sectorColor}; font-size: 1.2rem;">${sectorLabel}</strong>
+                <div style="background: white; padding: 12px; border-radius: 10px; border-right: 4px solid ${sectorColor}; box-shadow: 0 2px 8px rgba(0,0,0,0.05);">
+                    <span style="color: #666; font-size: 0.85rem;">📊 تصنيف الاستحقاق:</span><br>
+                    <strong style="color: ${sectorColor}; font-size: 1.15rem;">${sectorLabel}</strong>
                 </div>
                 
-                <div style="background: white; padding: 12px 15px; border-radius: 12px; border-right: 5px solid #bdc3c7; box-shadow: 0 2px 8px rgba(0,0,0,0.04);">
-                    <span style="color: #7f8c8d; font-size: 0.85rem;">🏢 القطاع الرئيسي:</span><br>
-                    <strong style="color: #2d3436;">${itemData.mainSector || 'الصناعة'}</strong>
+                <div style="background: white; padding: 12px; border-radius: 10px; border-right: 4px solid #ced4da; box-shadow: 0 2px 8px rgba(0,0,0,0.05);">
+                    <span style="color: #666; font-size: 0.85rem;">🏢 التبويب الرئيسي:</span><br>
+                    <strong style="color: #2c3e50;">${itemData.mainSector || 'الصناعة'}</strong>
                 </div>
 
-                <div style="background: white; padding: 12px 15px; border-radius: 12px; border-right: 5px solid #bdc3c7; box-shadow: 0 2px 8px rgba(0,0,0,0.04);">
-                    <span style="color: #7f8c8d; font-size: 0.85rem;">📂 التبويب الفرعي بالقرار:</span><br>
-                    <strong style="color: #2d3436;">${itemData.subSector}</strong>
+                <div style="background: white; padding: 12px; border-radius: 10px; border-right: 4px solid #ced4da; box-shadow: 0 2px 8px rgba(0,0,0,0.05);">
+                    <span style="color: #666; font-size: 0.85rem;">📂 القطاع الفرعي:</span><br>
+                    <strong style="color: #2c3e50;">${itemData.subSector}</strong>
                 </div>
             </div>
         </div>
     </div>
-    `;
-    
-    html += formatSectorIncentivesEnhanced(sector, itemData);
-    
-    return html;
+    ` + formatSectorIncentivesEnhanced(sector);
 }
 
 /**
@@ -2129,5 +2119,6 @@ window.gptAgent.smartSearch = smartSearchFixed;
 window.gptAgent.showSmartSearchButtons = showSmartSearchButtons;
 window.showSmartSearchButtons = showSmartSearchButtons; // للاستخدام المباشر
 window.smartSearchFixed = smartSearchFixed;
+
 
 
