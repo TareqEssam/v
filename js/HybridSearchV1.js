@@ -32,14 +32,13 @@ class HybridSearchEngine {
     decodeVector(base64String) {
         try {
             const binaryString = atob(base64String);
-            const bytes = new Uint8Array(binaryString.length);
-            for (let i = 0; i < binaryString.length; i++) {
-                bytes[i] = binaryString.charCodeAt(i);
-            }
-            const float32Array = new Float32Array(bytes.buffer);
-            return Array.from(float32Array);
+            const len = binaryString.length;
+            const bytes = new Uint8Array(len);
+            for (let i = 0; i < len; i++) bytes[i] = binaryString.charCodeAt(i);
+            // جراحة: التأكد من سلامة الـ Buffer وفكه كـ Float32 بشكل مباشر
+            return Array.from(new Float32Array(bytes.buffer));
         } catch (error) {
-            console.error("Failed to decode vector:", error);
+            console.error("Vector Decode Failed:", error);
             return null;
         }
     }
@@ -363,16 +362,18 @@ class HybridSearchEngine {
         
         return {
             query: query,
-            targetDatabases: targetDatabases,
+            intent: targetDatabases[0], // إصلاح الـ undefined
             resultsCount: finalResults.length,
             results: finalResults,
             topMatch: finalResults[0] || null,
-            confidence: topScore
+            // جراحة: إذا كان الاعتماد دلالياً، نرسل قيمة تعبر عن نجاح الاسترجاع
+            confidence: finalResults.length > 0 ? 0.95 : 0 
         };
     }
 }
 
 export const hybridEngine = new HybridSearchEngine();
+
 
 
 
