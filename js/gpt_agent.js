@@ -2827,8 +2827,12 @@ function formatSingleActivityInDecision104WithIncentives(activityName, itemData,
     
     let html = `
     <div class="info-card" style="background: linear-gradient(135deg, ${sector === 'A' ? '#e8f5e9' : '#e3f2fd'}, white); border-left: 4px solid ${sectorColor};">
+        // جراحة: نستخدم الاسم المخزن في itemData لأنه الاسم الرسمي الصحيح
+    const officialName = itemData.activity || activityName;
+    let html = `
+    <div class="info-card" style="background: linear-gradient(135deg, ${sector === 'A' ? '#e8f5e9' : '#e3f2fd'}, white); border-left: 4px solid ${sectorColor};">
         <div class="info-card-header" style="color: ${sector === 'A' ? '#2e7d32' : '#1565c0'};">
-            ✅ النشاط "${activityName}" موجود في القرار 104
+            ✅ نشاط: ${officialName}
         </div>
         <div class="info-card-content">
             <div class="info-row">
@@ -3513,7 +3517,9 @@ window.AgentMemory = AgentMemory;
 window.checkDecision104Full = window.checkDecision104Full;
 window.formatSingleActivityInDecision104WithIncentives = formatSingleActivityInDecision104WithIncentives;
 window.formatSectorIncentivesEnhanced = formatSectorIncentivesEnhanced;
-window.formatActivityNotFoundInDecision104 = formatActivityNotFoundInDecision104;    
+window.formatActivityNotFoundInDecision104 = formatActivityNotFoundInDecision104;
+window.handleDecision104Query = handleDecision104Query;
+window.formatMultipleActivitiesInDecision104WithBothSectorsFixed = formatMultipleActivitiesInDecision104WithBothSectorsFixed;
     
 
 // ==================== 🆕 تصدير دوال الأزرار الذكية ====================
@@ -3535,6 +3541,7 @@ console.log('✅ GPT Agent v9.0 - Core initialized!');
     console.log('🆕 Mobile Optimized: ENABLED 📱');
     console.log('🆕 Fullscreen Expand: ENABLED 🖥️');
 }
+
 
 
 
