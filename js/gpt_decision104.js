@@ -1,5 +1,73 @@
 window.GPT_AGENT = window.GPT_AGENT || {};
 
+// ==================== 🔍 دوال مساعدة عامة ====================
+
+/**
+ * تطبيع النص العربي (إزالة التشكيل، توحيد الأحرف)
+ */
+function normalizeArabic(text) {
+    if (!text) return '';
+    return text
+        .replace(/[أإآٱ]/g, 'ا')
+        .replace(/[ةه]/g, 'ه')
+        .replace(/[ىي]/g, 'ي')
+        .replace(/ؤ/g, 'و')
+        .replace(/ئ/g, 'ي')
+        .replace(/[\u064B-\u065F\u0670]/g, '')
+        .replace(/\s+/g, ' ')
+        .trim()
+        .toLowerCase();
+}
+
+/**
+ * هروب النص لاستخدامه داخل JavaScript (للاستخدام في onclick)
+ */
+function escapeForJS(str) {
+    if (!str) return '';
+    return str.replace(/\\/g, '\\\\')
+              .replace(/'/g, "\\'")
+              .replace(/"/g, '&quot;')
+              .replace(/\n/g, '\\n')
+              .replace(/\r/g, '\\r');
+}
+
+/**
+ * إضافة رسالة إلى واجهة المحادثة (يجب أن تكون معرفة في المشروع)
+ */
+function addMessageToUI(role, content) {
+    if (window.addMessageToUI) {
+        window.addMessageToUI(role, content);
+    } else {
+        console.warn("addMessageToUI غير معرفة، الرسالة:", role, content);
+    }
+}
+
+/**
+ * إظهار مؤشر الكتابة (يجب أن تكون معرفة)
+ */
+function showTypingIndicator() {
+    return Date.now() + '_' + Math.random();
+}
+
+/**
+ * إزالة مؤشر الكتابة
+ */
+function removeTypingIndicator(id) {
+    const el = document.getElementById(id);
+    if (el) el.remove();
+}
+
+/**
+ * كتابة الرد بشكل تدريجي (اختياري)
+ */
+function typeWriterResponse(html) {
+    if (window.typeWriterResponse) {
+        window.typeWriterResponse(html);
+    } else {
+        addMessageToUI('ai', html);
+    }
+}
+
 // ==================== 🔍 البحث في القرار 104 باستخدام NeuralSearch ====================
 
 /**
@@ -9,8 +77,6 @@ window.GPT_AGENT = window.GPT_AGENT || {};
  */
 function searchInDecision104WithNeural(activityName) {
     console.log("🔍 البحث المحسّن في القرار 104:", activityName);
-    
-    // استخدام الفلترة الذكية
     return enhancedSearchInDecision104(activityName, null);
 }
 
@@ -23,6 +89,7 @@ function searchInDecision104WithNeural(activityName) {
 function formatMultipleActivitiesInDecision104(activityName, results) {
     return formatEnhancedMultipleResults(activityName, results, null);
 }
+
 /**
  * دالة مساعدة لعرض معلومات نوع المطابقة
  */
@@ -49,13 +116,10 @@ function getMatchTypeInfo(matchType, confidence) {
 window.selectSpecificActivityInDecision104 = async function(activityName, sector) {
     console.log("🎯 اختيار نشاط محدد:", activityName, "القطاع:", sector);
     
-    // البحث عن النشاط المحدد في القطاع المحدد
     const results = searchInDecision104EnhancedForSpecificSector(activityName, sector);
     const selectedResult = results.find(r => r.item.activity === activityName && r.item.sector === sector);
     
     if (selectedResult) {
-        // حفظ النشاط في الذاكرة باستخدام setActivity
-        // نُنشئ كائن بيانات يحاكي بنية النشاط
         const activityData = {
             text: activityName,
             value: activityName,
@@ -68,11 +132,8 @@ window.selectSpecificActivityInDecision104 = async function(activityName, sector
         };
         
         await AgentMemory.setActivity(activityData, activityName);
-        
-        // إضافة رسالة المستخدم
         addMessageToUI('user', activityName);
         
-        // عرض تفاصيل النشاط المحدد
         const responseHTML = formatActivityFoundResponse(selectedResult, 'full');
         const typingId = showTypingIndicator();
         
@@ -105,20 +166,17 @@ function calculateWordSimilarityForDecision104(str1, str2) {
     const s1 = normalize(str1);
     const s2 = normalize(str2);
     
-    // إذا كان أحدهما جزء من الآخر
     if (s1.includes(s2) || s2.includes(s1)) {
         const longer = s1.length > s2.length ? s1 : s2;
         const shorter = s1.length > s2.length ? s2 : s1;
         return shorter.length / longer.length;
     }
     
-    // تقسيم النصوص إلى كلمات
     const words1 = s1.split(/\s+/).filter(w => w.length > 2);
     const words2 = s2.split(/\s+/).filter(w => w.length > 2);
     
     if (words1.length === 0 || words2.length === 0) return 0;
     
-    // حساب التشابه باستخدام Jaccard
     const set1 = new Set(words1);
     const set2 = new Set(words2);
     
@@ -127,7 +185,6 @@ function calculateWordSimilarityForDecision104(str1, str2) {
     
     return intersection.size / union.size;
 }
-
 
 /**
  * دالة تنسيق خيارات القرار 104 (عند عدم وجود نشاط محدد)
@@ -182,7 +239,6 @@ function formatDecision104Options() {
 function isDecision104Question(query) {
     const q = normalizeArabic(query);
     
-    // أنماط الأسئلة المتعلقة بالقرار 104
     const patterns = [
         /قرار.*104/,
         /104/,
@@ -208,9 +264,7 @@ function isDecision104Question(query) {
 /**
  * دالة حساب التشابه بالقرار 104
  */
-
 function calculateSimilarityForDecision104(str1, str2) {
-    // تطبيع أكثر دقة
     const normalize = (text) => {
         return text
             .replace(/[أإآٱ]/g, 'ا')
@@ -227,14 +281,12 @@ function calculateSimilarityForDecision104(str1, str2) {
     const s1 = normalize(str1);
     const s2 = normalize(str2);
     
-    // إذا كان أحدهما جزء من الآخر
     if (s1.includes(s2) || s2.includes(s1)) {
         const longer = s1.length > s2.length ? s1 : s2;
         const shorter = s1.length > s2.length ? s2 : s1;
         return shorter.length / longer.length;
     }
     
-    // حساب تشابه جاكارد للكلمات
     const words1 = new Set(s1.split(/\s+/).filter(w => w.length > 2));
     const words2 = new Set(s2.split(/\s+/).filter(w => w.length > 2));
     
@@ -257,13 +309,11 @@ function enhancedSearchInDecision104(activityName, sectorFilter = null) {
         return [];
     }
 
-    // 1. استخدام المحرك العصبي NeuralSearch المتوفر في مشروعك
     const searchResults = NeuralSearch(activityName, window.decision104.unifiedSearchDB, {
-        minScore: 50, // درجة حساسية متوسطة
+        minScore: 50,
         limit: 10
     });
 
-    // 2. تجهيز النتائج بالصيغة التي تتوقعها واجهة المستخدم
     let mapped = searchResults.results.map(r => ({
         item: r.originalData,
         score: r.finalScore,
@@ -271,7 +321,6 @@ function enhancedSearchInDecision104(activityName, sectorFilter = null) {
         sector: r.originalData.sector
     }));
 
-    // 3. الفلترة حسب القطاع (Guard) إذا تم تحديد قطاع معين
     if (sectorFilter) {
         mapped = mapped.filter(r => r.sector === sectorFilter);
     }
@@ -292,37 +341,18 @@ function deduplicateResults(results) {
     });
 }
 
-
-/**
- * ═══════════════════════════════════════════════════════════════════════
- * 🎯 handleDecision104Query - النسخة الذكية (Smart Filter Edition)
- * ═══════════════════════════════════════════════════════════════════════
- * 
- * الميزات:
- * ✅ دعم السياق الذكي
- * ✅ التمييز الدقيق بين القطاعات
- * ✅ إصلاح مشكلة القطاع ب
- * 🚀 جديد: فلتر ذكي للكلمات الجوهرية لمنع نتائج "تصنيع" العشوائية
- * 
- * استبدل الوظيفة الحالية بهذه النسخة المحسّنة
- * ═══════════════════════════════════════════════════════════════════════
- */
+// ==================== 🎯 handleDecision104Query - النسخة الذكية ====================
 
 function handleDecision104Query(query, questionType) {
-    // 1. تنظيف النص وتوحيد المسافات ومعالجة الخطأ الإملائي
     let q = normalizeArabic(query).replace(/القطا\s+ع/g, 'القطاع').replace(/\s+/g, ' ').trim();
     
     console.log("🎯 محرك القرار 104: بدء المعالجة لـ:", query);
 
-    // 2. [أولوية مطلقة] فحص الطلبات التفاعلية (الأزرار أو القوائم)
     if (q.includes('انشط') && (q.includes('قطاع') || q.includes('القطاع'))) {
-        
-        // أولاً: هل هذا طلب تفصيلي لنشاط رئيسي معين؟ (قادم من ضغطة زر)
         if (q.includes('عرض انشطه') && q.includes('في القطاع')) {
             const targetSector = (q.includes('قطاع ب') || q.includes('القطاع ب')) ? 'B' : 'A';
             const data = (targetSector === 'A') ? window.sectorAData : window.sectorBData;
             
-            // البحث عن النشاط الرئيسي المذكور في السؤال داخل قاعدة البيانات
             for (const mainName in data) {
                 if (q.includes(normalizeArabic(mainName))) {
                     console.log("🎯 العقل المدبر: عرض تفاصيل النشاط الرئيسي: " + mainName);
@@ -331,7 +361,6 @@ function handleDecision104Query(query, questionType) {
             }
         }
 
-        // ثانياً: إذا لم يكن طلباً تفصيلياً، نفحص هل هو طلب لعرض قائمة القطاع كاملة
         let detectedSector = null;
         if (q.includes(' قطاع ب') || q.includes(' القطاع b') || q.endsWith(' ب')) {
             detectedSector = 'B';
@@ -346,11 +375,8 @@ function handleDecision104Query(query, questionType) {
         }
     }
 
-// 1. كشف طلب عرض نشاط رئيسي محدد (عند الضغط على الزر)
     if (q.includes('عرض انشطه') && q.includes('في القطاع')) {
         const targetSector = q.includes('قطاع ب') ? 'B' : 'A';
-        // استخراج اسم النشاط الرئيسي من النص
-        // نمر على المفاتيح الموجودة في البيانات لنجد المطابق
         const data = (targetSector === 'A') ? window.sectorAData : window.sectorBData;
         for (const mainName in data) {
             if (q.includes(normalizeArabic(mainName))) {
@@ -360,48 +386,37 @@ function handleDecision104Query(query, questionType) {
         }
     }
 
-    // 3. إذا لم يكن طلباً لقائمة، ننتقل لاستخراج النشاط والبحث عنه
     const context = AgentMemory.getContext();
     let activityName = extractActivityFromQueryEnhanced(q);
 
-// اكتشاف طلب الشروط للقطاع ب
-if (q.includes('شروط') && q.includes('ب')) {
-    console.log("🎯 تم طلب عرض شروط القطاع ب");
-    return renderSectorBConditions();
-}
+    if (q.includes('شروط') && q.includes('ب')) {
+        console.log("🎯 تم طلب عرض شروط القطاع ب");
+        return renderSectorBConditions();
+    }
 
-    
-    // نظرة عامة على القرار 104
     if (/ما\s*(هو|هي).*قرار.*104/.test(q) || /قرار.*104.*ايه/.test(q)) {
         return formatDecision104Overview();
-    }    // المناطق المحددة للقطاع أ
+    }
+
     if (/(ما|ماهي|اذكر).*مناطق.*(قطاع|القطاع)\s*(أ|ا|1)/.test(q) || 
         q.includes('المناطق المحددة للقطاع أ')) {
         return formatSectorARegionsDetailed();
     }
-    
-       // [إضافة جديدة] المناطق المحددة للقطاع ب (تعديل دقيق)
+
     if (/(ما|ماهي|اذكر|اين|أين).*مناطق.*(قطاع|القطاع)\s*(ب|2)/.test(q) || 
         q.includes('المناطق المحددة للقطاع ب') ||
         q.includes('مناطق القطاع ب')) {
         return formatSectorBRegions();
     }
-   
-    
-    // حوافز القطاع أ
+
     if (/(ما|ماهي|اذكر).*حوافز.*(قطاع|القطاع)\s*(أ|ا|1)/.test(q)) {
         return formatSectorIncentives('A');
     }
-    
-    // حوافز القطاع ب
+
     if (/(ما|ماهي|اذكر).*حوافز.*(قطاع|القطاع)\s*(ب|2)/.test(q)) {
         return formatSectorIncentives('B');
     }
-    
-    // ═══════════════════════════════════════════════════════════
-    // الخطوة 3: التحقق من اسم النشاط
-    // ═══════════════════════════════════════════════════════════
-    
+
     if (!activityName || activityName.length < 3) {
         console.log("⚠️ [Activity Name] اسم النشاط قصير جداً أو فارغ:", activityName);
         return `
@@ -416,22 +431,14 @@ if (q.includes('شروط') && q.includes('ب')) {
             </div>
         `;
     }
-    
-    // ═══════════════════════════════════════════════════════════
-    // الخطوة 4: تحديد نطاق البحث (القطاع أ / ب / كليهما)
-    // ═══════════════════════════════════════════════════════════
-    
+
     const scopeDetection = detectSearchScopeEnhanced(q);
-    const searchScope = scopeDetection.scope; // 'A' أو 'B' أو 'both'
-    
+    const searchScope = scopeDetection.scope;
+
     console.log(`🎯 [Search Scope] النطاق: ${scopeDetection.scopeName}`);
-    
-    // ═══════════════════════════════════════════════════════════
-    // الخطوة 5: تنفيذ البحث الأولي (Neural Search)
-    // ═══════════════════════════════════════════════════════════
-    
+
     let results = [];
-    
+
     if (searchScope === 'A') {
         results = searchInDecision104EnhancedForSpecificSector(activityName, 'A');
         console.log(`📊 [Search Results] القطاع أ: ${results.length} نتيجة`);
@@ -442,28 +449,14 @@ if (q.includes('شروط') && q.includes('ب')) {
         results = searchInDecision104EnhancedForBothSectors(activityName);
         console.log(`📊 [Search Results] كلا القطاعين: ${results.length} نتيجة`);
     }
-    
-    // ═══════════════════════════════════════════════════════════
-    // الخطوة 6: حارس القطاع الصارم (Sector Guard)
-    // ═══════════════════════════════════════════════════════════
-    
+
     if (searchScope !== 'both') {
         results = results.filter(r => (r.sector || r.item?.sector) === searchScope);
     }
-    
-    // ═══════════════════════════════════════════════════════════
-    // الخطوة 7: حذف التكرار (Deduplication)
-    // ═══════════════════════════════════════════════════════════
-    
+
     results = deduplicateResults(results);
     console.log(`✅ [After Deduplication] ${results.length} نتيجة`);
-    
-    // ═══════════════════════════════════════════════════════════
-    // 🚀 الخطوة 8: فلترة الكلمات الجوهرية (Smart Keyword Filter)
-    // هذه الخطوة تمنع النتائج العشوائية لكلمات مثل "تصنيع"
-    // ═══════════════════════════════════════════════════════════
-    
-    // قائمة الأفعال/الكلمات العامة التي لا تكفي وحدها للتطابق - تم إضافة كلمات التواجد كخط دفاع ثانٍ
+
     const commonVerbs = [
         'تصنيع', 'انتاج', 'إنتاج', 'تجميع', 'اقامة', 'إقامة', 
         'تشغيل', 'تجهيز', 'توريد', 'مشروع', 'نشاط', 'صناعة', 
@@ -471,30 +464,16 @@ if (q.includes('شروط') && q.includes('ب')) {
         'وارد', 'وارده', 'واردة', 'موجود', 'موجودة', 'مدرج', 'مدرجة', 'مذكور'
     ];
 
-    // تقسيم جملة البحث إلى كلمات
     const queryTerms = activityName.split(/\s+/).map(w => normalizeArabic(w));
-    
-    // استخراج الكلمات "الجوهرية" (ليست عامة وطولها > 2)
-    // مثال: "تصنيع خلايا شمسية" -> الجوهرية: "خلايا"، "شمسية"
     const significantTerms = queryTerms.filter(w => !commonVerbs.includes(w) && w.length > 2);
 
     console.log(`🧠 [Smart Filter] الكلمات الجوهرية: [${significantTerms.join(', ')}]`);
 
-    // إذا وجدنا كلمات جوهرية، نقوم بفلترة النتائج
-    // جراحة دقيقة للمنطق - داخل دالة handleDecision104Query
     if (significantTerms.length > 0 && results.length > 0) {
         const strictResults = results.filter(r => {
             const itemText = normalizeArabic(r.item.activity);
-            
-            // حساب عدد الكلمات الجوهرية الموجودة فعلياً في اسم النشاط
             const matchedTermsCount = significantTerms.filter(term => itemText.includes(term)).length;
-            
-            // حساب نسبة التطابق (Density)
             const matchPercentage = (matchedTermsCount / significantTerms.length);
-            
-            // إذا كان البحث من عدة كلمات، لا نقبل إلا تطابق 70% أو أكثر
-            // (نقل + جماعي) = 2 كلمة. النقل المبرد يطابق 1 فقط (50%) -> يُحذف.
-            // (نقل + جماعي) = 2 كلمة. النقل الجماعي يطابق 2 (100%) -> يظهر.
             return matchPercentage >= 0.7;
         });
 
@@ -506,24 +485,17 @@ if (q.includes('شروط') && q.includes('ب')) {
         }
     }
 
-    // ═══════════════════════════════════════════════════════════
-    // الخطوة 9: تقليل الضوضاء وترتيب النتائج (Noise Suppression)
-    // ═══════════════════════════════════════════════════════════
-    
     if (results.length > 1) {
-        // إعادة الترتيب: الأنشطة التي تحتوي على أكبر عدد من الكلمات الجوهرية تظهر أولاً
         if (significantTerms.length > 0) {
             results.sort((a, b) => {
                 const textA = normalizeArabic(a.item.activity);
                 const textB = normalizeArabic(b.item.activity);
                 const matchA = significantTerms.filter(t => textA.includes(t)).length;
                 const matchB = significantTerms.filter(t => textB.includes(t)).length;
-                // الترتيب حسب عدد المطابقات الجوهرية ثم حسب النقاط الأصلية
                 return (matchB - matchA) || (b.score - a.score);
             });
         }
 
-        // حذف النتائج الضعيفة جداً مقارنة بالنتيجة الأولى
         const topScore = results[0].confidence || results[0].score || 0;
         if (topScore >= 80) {
             results = results.filter(r => (r.confidence || r.score || 0) >= (topScore * 0.7));
@@ -531,34 +503,26 @@ if (q.includes('شروط') && q.includes('ب')) {
             results = results.filter(r => (r.confidence || r.score || 0) >= 40);
         }
     }
-    
-    // ═══════════════════════════════════════════════════════════
-    // الخطوة 10: التحقق النهائي والعرض
-    // ═══════════════════════════════════════════════════════════
-    
+
     if (!results || results.length === 0) {
         console.log("❌ [No Results] لم يتم العثور على أي نتائج");
         return formatActivityNotFoundInDecision104(activityName, searchScope);
     }
-    
+
     if (results.length === 1) {
-        // ═══ نتيجة واحدة ═══
         const result = results[0];
         const itemData = result.item || result;
-        
+
         console.log(`✅ [Single Result] عرض نشاط واحد: "${itemData.activity}"`);
         AgentMemory.setDecisionActivity(itemData, activityName);
-        
+
         return formatSingleActivityInDecision104WithIncentives(
             activityName,
             itemData,
             searchScope
         );
-        
     } else {
-        // ═══ عدة نتائج ═══
         console.log(`📋 [Multiple Results] عرض ${results.length} نشاط للاختيار`);
-        
         return formatMultipleActivitiesInDecision104WithBothSectorsFixed(
             activityName,
             results,
@@ -567,14 +531,8 @@ if (q.includes('شروط') && q.includes('ب')) {
     }
 }
 
+// وظائف مساعدة إضافية
 
-// ═══════════════════════════════════════════════════════════════════════
-// وظائف مساعدة إضافية (مطلوبة لعمل الكود)
-// ═══════════════════════════════════════════════════════════════════════
-
-/**
- * حفظ نشاط القرار 104 في الذاكرة
- */
 AgentMemory.setDecisionActivity = function(itemData, originalQuery) {
     this.currentContext = {
         type: 'decision_activity',
@@ -584,7 +542,6 @@ AgentMemory.setDecisionActivity = function(itemData, originalQuery) {
         sector: itemData.sector,
         name: itemData.activity
     };
-    
     console.log("💾 [Memory] تم حفظ نشاط القرار 104:", {
         type: 'decision_activity',
         name: itemData.activity,
@@ -592,9 +549,6 @@ AgentMemory.setDecisionActivity = function(itemData, originalQuery) {
     });
 };
 
-/**
- * دالة تشخيصية لمشاكل القطاع ب
- */
 window.debugSectorB = function() {
     console.log("═════════════════════════════════════");
     console.log("🔍 تشخيص القطاع ب");
@@ -634,9 +588,6 @@ window.debugSectorB = function() {
     console.log("═════════════════════════════════════");
 };
 
-/**
- * دالة تشخيصية للسياق
- */
 window.debugContext = function() {
     console.log("═════════════════════════════════════");
     console.log("🧠 تشخيص السياق");
@@ -665,12 +616,11 @@ console.log(`
 ║  🎯 Features:                                                 ║
 ║  ✓ Smart Context Recovery                                    ║
 ║  ✓ Enhanced Sector Detection                                 ║
-║  ✓ Smart Keyword Filtering (Fixes "Manufacturing" issue)     ║
+║  ✓ Smart Keyword Filtering                                   ║
 ║  ✓ Sector B Fix                                              ║
 ║                                                                ║
 ╚════════════════════════════════════════════════════════════════╝
 `);
-
 
 function searchInDecision104EnhancedForBothSectors(activityName) {
     const normalizedQuery = normalizeArabic(activityName);
@@ -678,7 +628,6 @@ function searchInDecision104EnhancedForBothSectors(activityName) {
     
     let allResults = [];
     
-    // جلب نتائج أ وب بشكل منفصل تماماً
     if (window.sectorAData) {
         allResults.push(...searchInSectorData(window.sectorAData, 'A', 'القطاع أ', normalizedQuery, queryWords));
     }
@@ -686,20 +635,10 @@ function searchInDecision104EnhancedForBothSectors(activityName) {
         allResults.push(...searchInSectorData(window.sectorBData, 'B', 'القطاع ب', normalizedQuery, queryWords));
     }
     
-    // ترتيب النتائج الكلية حسب الثقة
     allResults.sort((a, b) => b.score - a.score);
-    
-    // حذف التكرار النهائي
     return deduplicateResults(allResults);
 }
 
-
-/**
- * دالة البحث في قطاع محدد فقط (أ أو ب)
- * @param {string} activityName - اسم النشاط المراد البحث عنه
- * @param {string} targetSector - القطاع المستهدف ('A' أو 'B')
- * @returns {Array} - مصفوفة تحتوي على النتائج من القطاع المحدد فقط
- */
 function searchInDecision104EnhancedForSpecificSector(activityName, targetSector) {
     const normalizedQuery = normalizeArabic(activityName);
     const queryWords = normalizedQuery.split(/\s+/).filter(w => w.length > 2);
@@ -711,23 +650,6 @@ function searchInDecision104EnhancedForSpecificSector(activityName, targetSector
     }
 }
 
-function deduplicateResults(results) {
-    if (!results || !Array.isArray(results)) return [];
-    const seen = new Set();
-    return results.filter(result => {
-        // إنشاء مفتاح فريد يجمع النص والقطاع لضمان عدم التكرار
-        const textKey = (result.item.activity || result.text).trim();
-        const uniqueKey = `${textKey}_${result.sector}`.toLowerCase();
-        if (seen.has(uniqueKey)) return false;
-        seen.add(uniqueKey);
-        return true;
-    });
-}
-
-/**
- * دالة البحث في قطاع محدد باستخدام NeuralSearch
- * تم تحديثها لضمان إرسال مصفوفة مسطحة دائماً
- */
 function searchInSectorData(sectorData, sectorId, sectorName, normalizedQuery, queryWords) {
     let flatData = [];
     for (const [mainSector, subSectors] of Object.entries(sectorData)) {
@@ -738,10 +660,9 @@ function searchInSectorData(sectorData, sectorId, sectorName, normalizedQuery, q
         }
     }
 
-    // الميزة الجديدة: عزل الذاكرة المؤقتة لمنع تزييف النتائج
     const searchResults = NeuralSearch(normalizedQuery, flatData, { 
         minScore: 35, 
-        cacheScope: `sector_${sectorId}` // يمنع خلط نتائج قطاع أ بقطاع ب
+        cacheScope: `sector_${sectorId}`
     });
     
     const mapped = searchResults.results.map(r => ({
@@ -754,27 +675,22 @@ function searchInSectorData(sectorData, sectorId, sectorName, normalizedQuery, q
 
     return deduplicateResults(mapped);
 }
-/**
- * دالة تقييم مدى مطابقة نشاط معين
- */
+
 function evaluateActivityMatch(normalizedActivity, normalizedQuery, queryWords, item) {
     let score = 0;
     let matchedWords = 0;
     let matchType = 'none';
     
-    // === المستوى 1: تطابق كامل ===
     if (normalizedActivity === normalizedQuery) {
         score = 1000;
         matchedWords = queryWords.length;
         matchType = 'exact_match';
     }
-    // === المستوى 2: تطابق جزئي (أحدهما يحتوي على الآخر) ===
     else if (normalizedActivity.includes(normalizedQuery) || normalizedQuery.includes(normalizedActivity)) {
         score = 800;
         matchedWords = Math.min(queryWords.length, normalizedActivity.split(/\s+/).length);
         matchType = 'partial_match';
     }
-    // === المستوى 3: تطابق بكلمات رئيسية ===
     else if (queryWords.length > 0) {
         const activityWords = normalizedActivity.split(/\s+/);
         let keywordMatches = 0;
@@ -790,23 +706,20 @@ function evaluateActivityMatch(normalizedActivity, normalizedQuery, queryWords, 
         
         if (keywordMatches > 0) {
             const matchPercentage = (keywordMatches / queryWords.length) * 100;
-            score = Math.round(matchPercentage * 8); // تحويل النسبة إلى نقاط
+            score = Math.round(matchPercentage * 8);
             matchedWords = keywordMatches;
             matchType = 'keyword_match';
         }
     }
     
-    // === المستوى 4: تطابق تقريبي (لمشابهة عالية) ===
     if (score < 500) {
         const similarity = calculateWordSimilarityForDecision104(normalizedQuery, normalizedActivity);
-        if (similarity >= 0.5) { // عتبة أقل للتشابه
+        if (similarity >= 0.5) {
             score = Math.max(score, Math.round(similarity * 600));
             matchType = 'fuzzy_match';
         }
     }
     
-    // === المستوى 5: تطابق بالكلمات الشائعة ===
-    // زيادة فرص المطابقة للكلمات الشائعة مثل "نقل"، "تصنيع"، "تجهيز" إلخ
     const commonActivityWords = ['نقل', 'تصنيع', 'تجهيز', 'إنتاج', 'تركيب', 'صيانة', 'تشغيل', 'تخزين', 'تعبئة'];
     for (const commonWord of commonActivityWords) {
         if (normalizedActivity.includes(commonWord) && normalizedQuery.includes(commonWord)) {
@@ -825,20 +738,9 @@ function evaluateActivityMatch(normalizedActivity, normalizedQuery, queryWords, 
     };
 }
 
-// ═══════════════════════════════════════════════════════════════
-// FIX #3 & #4: إصلاح القطاع ب + إخفاء المعلومات الزائدة
-// ═══════════════════════════════════════════════════════════════
+// ==================== FIX #3 & #4: إصلاح القطاع ب + إخفاء المعلومات الزائدة ====================
 
-/**
- * تنسيق عرض عدة أنشطة - النسخة المُحسّنة
- * 
- * التحسينات:
- * 1. عدم عرض معلومات القطاع الآخر إذا كان البحث في قطاع واحد
- * 2. رسائل أوضح للمستخدم
- * 3. تصميم أفضل
- */
 function formatMultipleActivitiesInDecision104WithBothSectorsFixed(activityName, results, searchScope = 'both') {
-    // رسالة توضيحية حسب نطاق البحث
     let scopeMessage = '';
     if (searchScope === 'A') {
         scopeMessage = `
@@ -860,11 +762,9 @@ function formatMultipleActivitiesInDecision104WithBothSectorsFixed(activityName,
         `;
     }
     
-    // تصنيف النتائج حسب القطاع
     const sectorAResults = results.filter(r => (r.item?.sector || r.sector) === 'A');
     const sectorBResults = results.filter(r => (r.item?.sector || r.sector) === 'B');
     
-    // بناء رسالة التوزيع بذكاء
     let distributionMessage = '';
     if (searchScope === 'both') {
         distributionMessage = `📊 التوزيع: <strong>${sectorAResults.length} في القطاع أ</strong> • <strong>${sectorBResults.length} في القطاع ب</strong>`;
@@ -888,17 +788,14 @@ function formatMultipleActivitiesInDecision104WithBothSectorsFixed(activityName,
         </div>
     `;
     
-    // عرض أنشطة القطاع أ (إذا كان البحث شامل أو في أ)
     if ((searchScope === 'both' || searchScope === 'A') && sectorAResults.length > 0) {
         html += formatSectorResultsSection('A', sectorAResults, activityName);
     }
     
-    // عرض أنشطة القطاع ب (إذا كان البحث شامل أو في ب)
     if ((searchScope === 'both' || searchScope === 'B') && sectorBResults.length > 0) {
         html += formatSectorResultsSection('B', sectorBResults, activityName);
     }
     
-    // رسالة إذا لم توجد نتائج في القطاع المطلوب
     if (searchScope === 'A' && sectorAResults.length === 0) {
         html += `
             <div style="margin-top: 16px; padding: 14px; background: #fff3e0; border-radius: 10px; border: 1px solid #ffe0b2;">
@@ -923,12 +820,11 @@ function formatMultipleActivitiesInDecision104WithBothSectorsFixed(activityName,
         `;
     }
     
-    // ملاحظة إضافية
     html += `
         <div style="margin-top: 16px; padding: 12px; background: #fff3e0; border-radius: 10px; border: 1px solid #ffcc80;">
             <div style="color: #e65100; font-weight: 600; display: flex; align-items: center; gap: 8px;">
                 <i class="fas fa-lightbulb" style="color: #ff9800;"></i>
-                <span>💡   الفرق بين القطاعين:</span>
+                <span>💡 الفرق بين القطاعين:</span>
             </div>
             <div style="color: #bf360c; font-size: 0.9em; margin-top: 8px; line-height: 1.5;">
                 <strong>القطاع أ:</strong> يتطلب ممارسة النشاط في مناطق محددة (حوافز أعلى 50%)<br>
@@ -940,9 +836,6 @@ function formatMultipleActivitiesInDecision104WithBothSectorsFixed(activityName,
     return html;
 }
 
-/**
- * دالة مساعدة لعرض نتائج قطاع معين
- */
 function formatSectorResultsSection(sector, results, activityName) {
     const sectorName = sector === 'A' ? 'القطاع أ' : 'القطاع ب';
     const sectorColor = sector === 'A' ? '#4caf50' : '#2196f3';
@@ -966,10 +859,9 @@ function formatSectorResultsSection(sector, results, activityName) {
     results.forEach((result, index) => {
         const itemData = result.item || result;
         const confidence = result.confidence || 50;
-        const matchType = result.matchType || 'unknown';
         
         html += `
-            <div class="choice-btn" onclick="selectSpecificActivityInDecision104('${itemData.activity.replace(/'/g, "\\'")}', '${sector}')" 
+            <div class="choice-btn" onclick="selectSpecificActivityInDecision104('${escapeForJS(itemData.activity)}', '${sector}')" 
                  style="margin: 8px 0; text-align: right; background: white; border: 2px solid ${sectorColor}; border-left: 6px solid ${sectorColor};">
                 <div style="display: flex; justify-content: space-between; align-items: flex-start;">
                     <div style="text-align: right; width: 100%;">
@@ -996,22 +888,14 @@ function formatSectorResultsSection(sector, results, activityName) {
     });
     
     html += `</div></div>`;
-    
     return html;
 }
 
-// ═══════════════════════════════════════════════════════════════
-// FIX #5: تحسين كشف القطاعات - Enhanced Sector Detection
-// ═══════════════════════════════════════════════════════════════
+// ==================== FIX #5: تحسين كشف القطاعات ====================
 
-/**
- * كشف نوع البحث المطلوب (comprehensive / sectorA / sectorB)
- * النسخة المُحسّنة مع دعم أفضل للغة العربية
- */
 function detectSearchScopeEnhanced(query) {
     const q = normalizeArabic(query);
     
-    // أنماط القطاع أ
     const sectorAPatterns = [
         /بالقطاع\s*أ/,
         /بالقطاع\s*ا/,
@@ -1023,7 +907,6 @@ function detectSearchScopeEnhanced(query) {
         /القطاع\s*1/
     ];
     
-    // أنماط القطاع ب
     const sectorBPatterns = [
         /بالقطاع\s*ب/,
         /في\s*القطاع\s*ب/,
@@ -1032,43 +915,31 @@ function detectSearchScopeEnhanced(query) {
         /القطاع\s*2/
     ];
     
-    // فحص القطاع ب أولاً (لأن "ب" أكثر تحديداً من "أ")
     if (sectorBPatterns.some(pattern => pattern.test(q))) {
         console.log("🎯 [Scope Detection] تم كشف: القطاع ب");
         return { scope: 'B', scopeName: 'القطاع ب' };
     }
     
-    // فحص القطاع أ
     if (sectorAPatterns.some(pattern => pattern.test(q))) {
         console.log("🎯 [Scope Detection] تم كشف: القطاع أ");
         return { scope: 'A', scopeName: 'القطاع أ' };
     }
     
-    // بحث شامل (افتراضي)
     console.log("🎯 [Scope Detection] بحث شامل في كلا القطاعين");
     return { scope: 'both', scopeName: 'كلا القطاعين' };
 }
 
-
-/**
- * دالة اختيار نشاط محدد من القائمة - النسخة المُصلحة (Robust Edition)
- * تعالج مشاكل العرض وعدم تطابق النصوص
- */
 window.selectSpecificActivityInDecision104 = function(activityName, sector) {
     console.log(`🚀 [Click Handler] تم اختيار النشاط: "${activityName}" - القطاع: ${sector}`);
     
-    // 1. محاولة البحث عن تفاصيل النشاط الكاملة (القطاع الرئيسي والفرعي)
     let itemData = null;
     let dataSource = (sector === 'A') ? window.sectorAData : window.sectorBData;
     
     if (dataSource) {
-        // تطبيع الاسم المختار للبحث بدقة
         const normalizedTarget = normalizeArabic(activityName);
         
-        // البحث العميق في الهيكل الشجري
         for (const [mainSector, subSectors] of Object.entries(dataSource)) {
             for (const [subSector, activities] of Object.entries(subSectors)) {
-                // البحث المرن: تطابق تام أو احتواء
                 const found = activities.find(act => {
                     const normAct = normalizeArabic(act);
                     return normAct === normalizedTarget || normAct.includes(normalizedTarget) || normalizedTarget.includes(normAct);
@@ -1076,7 +947,7 @@ window.selectSpecificActivityInDecision104 = function(activityName, sector) {
                 
                 if (found) {
                     itemData = {
-                        activity: found, // نستخدم الاسم الأصلي من قاعدة البيانات
+                        activity: found,
                         mainSector: mainSector,
                         subSector: subSector,
                         sector: sector
@@ -1088,7 +959,6 @@ window.selectSpecificActivityInDecision104 = function(activityName, sector) {
         }
     }
     
-    // 2. نظام الطوارئ (Fallback): إذا فشل البحث الدقيق، نستخدم البيانات المتاحة
     if (!itemData) {
         console.warn("⚠️ [Click Handler] لم يتم العثور على التفاصيل الكاملة، استخدام بيانات الطوارئ.");
         itemData = {
@@ -1100,55 +970,28 @@ window.selectSpecificActivityInDecision104 = function(activityName, sector) {
     }
     
     console.log("✅ [Click Handler] البيانات جاهزة للعرض:", itemData);
-
-    // 3. عرض رسالة المستخدم (محاكاة أن المستخدم ضغط عليها)
-    // نستخدم activityName الأصلي الذي ضغط عليه المستخدم
     addMessageToUI('user', activityName);
-    
-    // 4. حفظ في الذاكرة
     AgentMemory.setDecisionActivity(itemData, activityName);
     
-    // 5. توليد HTML للرد
     const responseHTML = formatSingleActivityInDecision104WithIncentives(
-        itemData.activity, // نستخدم الاسم من البيانات لضمان الدقة
+        itemData.activity,
         itemData,
         sector
     );
     
-    // 6. عرض الرد (مع التأكد من استخدام 'ai' وتشغيل مؤشر الكتابة)
     const typingId = showTypingIndicator();
     
     setTimeout(() => {
         removeTypingIndicator(typingId);
-        // ✅ التصحيح الأساسي هنا: استخدام 'ai' بدلاً من 'bot'
-        typeWriterResponse(responseHTML); 
+        typeWriterResponse(responseHTML);
     }, 500);
 };
 
+// ==================== استخراج اسم النشاط من السؤال ====================
 
-/**
- * استخراج اسم النشاط من السؤال - النسخة المُحسّنة مع دعم السياق الذكي
- * 
- * المشكلة القديمة:
- * - السؤال: "هل هو وارد بالقرار 104"
- * - النتيجة: "هو" ← ❌ خطأ فادح
- * 
- * الحل الجديد:
- * - كشف الضمائر (هو، هي، ذلك، هذا)
- * - استرجاع اسم النشاط من السياق السابق
- * - النتيجة: "فندق عائم نايل كروز" ← ✅ صحيح
- */
-/**
- * استخراج اسم النشاط من السؤال - النسخة الاحترافية (V3)
- * ✅ تحافظ على السياق والضمائر
- * ✅ تحل مشكلة الكلمات الزائدة مثل (وارده، موجودة، مشمول)
- */
 function extractActivityFromQueryEnhanced(normalizedQuery) {
     const context = AgentMemory.getContext();
     
-    // ═══════════════════════════════════════════════════════════
-    // 🛡️ الخطوة 1: كشف الضمائر والكلمات المرجعية (كما هي - لم تتغير)
-    // ═══════════════════════════════════════════════════════════
     const pronounPatterns = [
         /^(هو|هي|ذلك|تلك|هذا|هذه|النشاط|ده|دي)\s/,
         /\s(هو|هي|ذلك|تلك|هذا|هذه)\s/,
@@ -1157,7 +1000,6 @@ function extractActivityFromQueryEnhanced(normalizedQuery) {
     
     const hasPronoun = pronounPatterns.some(pattern => pattern.test(normalizedQuery));
     
-    // استرجاع من السياق عند وجود ضمير
     if (hasPronoun && context) {
         let contextActivityName = null;
         if (context.type === 'activity' && context.data) {
@@ -1174,9 +1016,6 @@ function extractActivityFromQueryEnhanced(normalizedQuery) {
         }
     }
     
-    // ═══════════════════════════════════════════════════════════
-    // 🎁 الخطوة 2: كشف أسئلة الحوافز (كما هي - لم تتغير)
-    // ═══════════════════════════════════════════════════════════
     const incentivePatterns = [
         /^(يحصل|تحصل|احصل|نحصل)\s*(على|علي)?\s*(حافز|حوافز)/,
         /^حافز/, /^حوافز/, /الحوافز$/, /حوافز$/
@@ -1198,55 +1037,36 @@ function extractActivityFromQueryEnhanced(normalizedQuery) {
         }
     }
     
-    // ═══════════════════════════════════════════════════════════
-    // 🧹 الخطوة 3: التنظيف الذكي والموسع (تم التحسين هنا 🚀)
-    // ═══════════════════════════════════════════════════════════
     let cleaned = normalizedQuery;
     
-    // 1. إزالة عبارات السؤال الشائعة في البداية
     cleaned = cleaned.replace(/^(هل|ما|ماذا|كيف|اين)\s+(هو|هي|عن|بخصوص|نشاط)?\s*/g, '');
-    cleaned = cleaned.replace(/^نشاط\s+/g, ''); 
+    cleaned = cleaned.replace(/^نشاط\s+/g, '');
 
-    // 2. قائمة الأنماط الموحدة (تم إصلاح تكرار التعريف لإنهاء خطأ SyntaxError)
     const patternsToRemove = [
-        // أ. حذف كلمات التواجد والشمول بحدود دقيقة للكلمة
         /\b(وارد|وارده|واردة|موجود|موجوده|موجودة|مدرج|مدرجه|مدرجة|مذكور|مذكوره|مشمول|مشموله|منصوص|منصوصه)\b/gi,
-        
-        // ب. حذف كلمة نشاط لزيادة التركيز
         /\b(نشاط|النشاط)\b/gi,
-        
-        // ج. سياق القرار والقطاعات
         /\s+(بالقرار|في القرار|داخل القرار|ضمن القرار)\s*104?/g,
         /\s+(بالقطاع|في القطاع|داخل القطاع)\s*[أابب]/g,
         /\s+قطاع\s*[أابب]/g,
         /قرار\s*104/g,
         /104/g,
-        
-        // د. حروف الجر الميتة في نهاية الجملة
         /\s+(في|عن|على)\s*$/g
     ];
     
-    // 3. تنفيذ عملية الحذف والتطهير
     patternsToRemove.forEach(pattern => {
         cleaned = cleaned.replace(pattern, ' ');
     });
     
-    // 4. تنظيف المسافات الزائدة الناتجة عن الحذف
     cleaned = cleaned.trim().replace(/\s+/g, ' ');
 
-    // 5. إزالة "ال" التعريف من بداية الكلمة (لتحسين مطابقة الجذور)
     if (cleaned.startsWith('ال') && cleaned.length > 4) {
         cleaned = cleaned.substring(2);
     }
 
-    // 6. مسح نهائي لأي لواحق كلمات تائهة في نهاية النص
     cleaned = cleaned.replace(/(وارده|واردة|موجوده|موجودة)$/, '').trim();
     
     console.log(`🧼 تنظيف الاستعلام النهائي: من [${normalizedQuery}] إلى [${cleaned}]`);
     
-    // ═══════════════════════════════════════════════════════════
-    // 🔄 الخطوة 4: Fallback للسياق (كما هي - لم تتغير)
-    // ═══════════════════════════════════════════════════════════
     if ((!cleaned || cleaned.length < 3) && context) {
         let contextActivityName = null;
         if (context.type === 'activity' && context.data) {
@@ -1263,41 +1083,31 @@ function extractActivityFromQueryEnhanced(normalizedQuery) {
     
     return cleaned.length > 2 ? cleaned : null;
 }
-/**
- * دالة استخراج اسم النشاط - الطريقة الاحتياطية
- * @param {string} normalizedQuery - السؤال المُنظّف
- * @returns {string|null}
- */
+
 function extractActivityFromQueryFallback(normalizedQuery) {
-    // محاولات متنوعة لاستخراج النشاط
     let activityName = null;
     
-    // نمط: هل نشاط [اسم النشاط] وارد بالقرار 104؟
     if (/هل.*نشاط.*104/.test(normalizedQuery)) {
         activityName = normalizedQuery.replace(/هل.*نشاط\s*/g, '')
                                       .replace(/\s*(وارد|موجود|مدرج|مذكور).*/g, '')
                                       .trim();
     }
-    // نمط: هل [اسم النشاط] بالقرار 104؟
     else if (/هل.*104/.test(normalizedQuery)) {
         activityName = normalizedQuery.replace(/هل\s*/g, '')
                                      .replace(/\s*104.*/g, '')
                                      .trim();
     }
-    // نمط عام يحتوي على كلمة نشاط
     else if (/(نشاط|انشطة|انشطه)\s/.test(normalizedQuery)) {
         activityName = normalizedQuery.replace(/.*?(نشاط|انشطة|انشطه)\s*/g, '')
                                      .replace(/\s*(في|ب|بالقرار|104).*/g, '')
                                      .trim();
     }
-    // نمط: بحث عن [اسم النشاط] في القرار 104
     else if (/بحث.*عن/.test(normalizedQuery)) {
         activityName = normalizedQuery.replace(/.*بحث.*عن\s*/g, '')
                                      .replace(/\s*(في|ب|بالقرار).*/g, '')
                                      .trim();
     }
     
-    // تنظيف النتيجة النهائية
     if (activityName) {
         activityName = activityName
             .replace(/\s+(هو|هي|في|ب|من|الى|على|عن|مع)/g, ' ')
@@ -1312,16 +1122,9 @@ function extractActivityFromQueryFallback(normalizedQuery) {
     return null;
 }
 
-/**
- * دالة استخراج اسم النشاط من السؤال
- * @param {string} query - السؤال المُنظّف
- * @returns {string|null}
- */
 function extractActivityFromQuery(query) {
-    // تنظيف السؤال مع الحفاظ على جوهر النشاط
     let cleaned = query;
     
-    // إزالة الكلمات الاستفهامية والكلمات الشائعة فقط
     cleaned = cleaned
         .replace(/^(هل|ما|ماذا|اين|كيف|متى|هل نشاط|هل\s*)/g, '')
         .replace(/\s*(وارد|موجود|مدرج|مذكور)\s*(ب|في)?\s*(قرار|القرار)?\s*104/g, '')
@@ -1332,16 +1135,10 @@ function extractActivityFromQuery(query) {
         .replace(/\s*104/g, '')
         .trim();
     
-    // إزالة كلمة "نشاط" إذا كانت في البداية فقط
     cleaned = cleaned.replace(/^نشاط\s+/, '');
-    
-    // إزالة "ال" التعريف إذا كانت في البداية
     cleaned = cleaned.replace(/^ال/, '');
-    
-    // تطبيع العربية
     cleaned = normalizeArabic(cleaned);
     
-    // إذا تبقى شيء معقول (أكثر من 3 أحرف)
     if (cleaned.length >= 3 && cleaned.length <= 100) {
         return cleaned;
     }
@@ -1349,10 +1146,6 @@ function extractActivityFromQuery(query) {
     return null;
 }
 
-/**
- * دالة تنسيق نظرة عامة على القرار 104
- * @returns {string} HTML
- */
 function formatDecision104Overview() {
     return `
         <div class="info-card">
@@ -1409,23 +1202,11 @@ function formatDecision104Overview() {
     `;
 }
 
-
-
-
-
-
-/**
- * دالة تنسيق رد مُحسَّن عند إيجاد النشاط في القرار 104
- * @param {Object} result - نتيجة البحث
- * @param {string} responseType - نوع الرد
- * @returns {string} HTML
- */
 function formatActivityFoundResponse(result, responseType) {
     const item = result.item;
     const sectorName = item.sector === 'A' ? 'القطاع أ' : 'القطاع ب';
     const sectorColor = item.sector === 'A' ? '#4caf50' : '#2196f3';
     
-    // ✅ بناء الرد الأساسي المنظم
     let html = `
         <div style="background: linear-gradient(135deg, ${sectorColor}15, #ffffff); padding: 20px; border-radius: 16px; border: 2px solid ${sectorColor}; margin-bottom: 15px;">
             <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 16px;">
@@ -1477,7 +1258,6 @@ function formatActivityFoundResponse(result, responseType) {
             </div>
     `;
     
-    // ✅ شرط القطاع أ: تأكيد على المناطق المحددة
     if (item.sector === 'A') {
         html += `
             <div style="margin-bottom: 20px;">
@@ -1514,21 +1294,17 @@ function formatActivityFoundResponse(result, responseType) {
             </div>
         `;
         
-        // ✅ التعديل الذكي: فحص إذا كان النشاط داخل قطاع النقل وهو تحديداً "النقل الجماعي"
-        // نقوم بفحص اسم النشاط (activityName) إذا كان يحتوي على جملة "النقل الجماعي"
         const isMassTransit = item.activityName && item.activityName.includes("النقل الجماعي");
         
         if (item.mainSector === "النقل" && isMassTransit) {
             html += formatTransportSpecialConditions();
         }
         
-        // ✅ فحص وعرض الشروط العامة للأنشطة المحددة (بما فيها كل أنشطة النقل الأخرى)
         if (shouldShowGeneralConditions(item.mainSector)) {
             html += formatSectorBGeneralConditions();
         }
     }
     
-    // ✅ شرط تأسيس الشركة بعد قانون الاستثمار
     html += `
         <div style="margin-bottom: 20px;">
             <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 12px;">
@@ -1583,11 +1359,8 @@ function formatActivityFoundResponse(result, responseType) {
     html += `</div>`;
     
     return html;
-}/**
- * دالة تنسيق رد عند عدم إيجاد النشاط
- * @param {string} activityName - اسم النشاط
- * @returns {string} HTML
- */
+}
+
 function formatActivityNotFoundResponse(activityName) {
     return `
         <div style="background: #ffebee; padding: 16px; border-radius: 12px; border-right: 4px solid #f44336;">
@@ -1618,7 +1391,6 @@ function formatActivityNotFoundResponse(activityName) {
 }
 
 function renderDecisionSectorList(sector, isMainOnly = false) {
-    // 1. تحديد مصدر البيانات
     const data = (sector === 'A') ? window.sectorAData : window.sectorBData;
     
     if (!data) return "⚠️ عذراً، لم يتم العثور على بيانات هذا القطاع.";
@@ -1627,7 +1399,6 @@ function renderDecisionSectorList(sector, isMainOnly = false) {
     let html = `<div style="border-right: 5px solid ${color}; padding: 15px; background: #fff; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); direction: rtl;">`;
     html += `<h4 style="color: ${color}; margin-top:0;">📋 أنشطة القرار 104 - القطاع ${sector === 'A' ? 'أ' : 'ب'}</h4>`;
 
-    // إذا كان القطاع ب، نعرض زر الشروط في البداية (إلا إذا طلب الأنشطة الرئيسية فقط)
     if (sector === 'B' && !isMainOnly) {
         html += `
         <div class="choice-btn" onclick="sendMessage('عرض الشروط العامة والخاصة للقطاع ب')" style="background: #e3f2fd; border: 1px solid #2196f3; color: #1565c0; margin: 10px 0;">
@@ -1635,16 +1406,13 @@ function renderDecisionSectorList(sector, isMainOnly = false) {
         </div>`;
     }
 
-    // 2. حلقة التكرار على كافة القطاعات الرئيسية
     for (const mainSector in data) {
         if (isMainOnly) {
-            // ✅ عرض كأزرار (سيتم تكرار هذا الجزء لكل قطاع رئيسي موجود في البيانات)
             html += `
             <div class="choice-btn" onclick="sendMessage('عرض انشطة ${mainSector} في القطاع ${sector === 'A' ? 'أ' : 'ب'}')" style="margin: 8px 0; border-right: 4px solid ${color}; text-align: right;">
                 <span class="choice-icon">📁</span> <strong>${mainSector}</strong>
             </div>`;
         } else {
-            // ✅ عرض تفصيلي (في حالة طلب كامل الأنشطة)
             html += `<div style="margin-bottom: 12px; border-bottom: 1px solid #eee; padding-bottom: 8px;">`;
             html += `<strong style="color: #333; display: block; margin-bottom: 5px;">📁 ${mainSector}</strong>`;
             
@@ -1656,13 +1424,12 @@ function renderDecisionSectorList(sector, isMainOnly = false) {
             }
             html += `</div>`;
         }
-    } // نهاية حلقة for
+    }
 
     html += `</div>`;
     return html;
 }
 
-// دالة عرض الشروط العامة والخاصة للقطاع ب
 function renderSectorBConditions() {
     const genConditions = window.decision104.sectorBGeneralConditions;
     const transConditions = window.decision104.transportSpecialConditions;
@@ -1670,7 +1437,6 @@ function renderSectorBConditions() {
     let html = `<div style="border-right: 5px solid #2196f3; padding: 15px; background: #fff; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); direction: rtl;">`;
     html += `<h4 style="color: #1565c0; margin-top:0; border-bottom: 2px solid #e3f2fd; padding-bottom: 10px;">⚖️ الشروط العامة والخاصة - للقطاع ب</h4>`;
 
-    // أولاً: الشروط العامة
     html += `<div style="margin-bottom: 20px;">`;
     html += `<strong style="color: #0d47a1; display: block; margin-bottom: 8px;">📌 الشروط العامة للاستحقاق:</strong>`;
     html += `<p style="font-size: 0.9em; color: #444; line-height: 1.6; background: #e3f2fd; padding: 10px; border-radius: 8px;">${genConditions.title}</p>`;
@@ -1680,7 +1446,6 @@ function renderSectorBConditions() {
     });
     html += `</ul></div>`;
 
-    // ثانياً: ضوابط النقل الجماعي (شروط خاصة)
     html += `<div style="margin-top: 15px; border-top: 1px dashed #ccc; padding-top: 15px;">`;
     html += `<strong style="color: #e65100; display: block; margin-bottom: 8px;">🚌 ضوابط خاصة (النقل الجماعي للمدن الجديدة):</strong>`;
     html += `<ul style="font-size: 0.85em; color: #555; padding-right: 20px;">`;
@@ -1703,7 +1468,6 @@ function renderSingleMainSector(sector, mainSectorName) {
     let html = `<div style="border-right: 5px solid ${color}; padding: 15px; background: #fff; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); direction: rtl;">`;
     html += `<h4 style="color: ${color}; margin-top:0; border-bottom: 2px solid #eee; padding-bottom:10px;">📂 تفاصيل ${mainSectorName} - القطاع ${sector === 'A' ? 'أ' : 'ب'}</h4>`;
 
-    // عرض القطاعات الفرعية والأنشطة لهذا النشاط الرئيسي فقط
     for (const subSector in targetData) {
         html += `<div style="margin-bottom: 15px;">`;
         html += `<div style="font-size: 0.95em; color: #1a73e8; font-weight: bold; margin-bottom: 5px;">🔹 ${subSector}</div>`;
@@ -1719,31 +1483,21 @@ function renderSingleMainSector(sector, mainSectorName) {
     
     html += `</div>`;
     return html;
-
 }
 
-// ====================================================================================
-// القسم النهائي: دوال العرض الجمالي الذكي (UI Presentation Layer)
-// تم وضعها هنا لضمان استقلالية موديول القرار 104 وقدرته على تنسيق ردوده ذاتياً
-// ====================================================================================
+// ==================== دوال العرض الجمالي الذكي (UI Presentation Layer) ====================
 
-/**
- * 🎨 دالة تنسيق احترافية (V4.2) - تعالج مشكلة الأسماء المبهمة في قاعدة البيانات
- */
 function formatSingleActivityInDecision104WithIncentives(activityName, itemData, searchScope) {
     const sector = itemData.sector || 'B';
     const isSectorA = (sector === 'A' || sector === 'أ');
     const sectorLabel = isSectorA ? 'القطاع (أ)' : 'القطاع (ب)';
     const sectorColor = isSectorA ? '#4caf50' : '#2196f3';
     
-    // 🧠 منطق "العنوان الذكي":
-    // إذا كان النشاط في القاعدة مجرد نص قانوني مثل (بموجب نص المادة...) 
-    // نقوم باستبداله فوراً باسم النشاط الذي استخرجه المساعد من سؤال المستخدم
     let mainTitle = itemData.activity;
     let isLegalReference = mainTitle.startsWith('(') || mainTitle.includes('بموجب نص المادة');
     
     if (isLegalReference) {
-        mainTitle = activityName; // استخدام اسم النشاط الصريح (مثل: صناعة برامج الكمبيوتر)
+        mainTitle = activityName;
     }
 
     let html = `
@@ -1784,117 +1538,19 @@ function formatSingleActivityInDecision104WithIncentives(activityName, itemData,
     </div>
     `;
     
-    // استدعاء دالة الحوافز
-    html += formatSectorIncentivesEnhanced(sector);
+    html += formatSectorIncentivesEnhanced(sector, itemData);
     
     return html;
 }
 
-/**
- * 💰 دالة عرض تفاصيل الحوافز المالية والضريبية بشكل جمالي
- */
-function formatSectorIncentivesEnhanced(sector) {
-    const isSectorA = (sector === 'A' || sector === 'أ');
-    const color = isSectorA ? '#4caf50' : '#2196f3';
-    const percentage = isSectorA ? '50%' : '30%';
-    const locationInfo = isSectorA ? 
-        'يشترط للاستفادة ممارسة النشاط في المناطق الجغرافية الأكثر احتياجاً للتنمية (وفقاً للخريطة الاستثمارية).' : 
-        'يمكن ممارسة النشاط في أي مكان داخل الجمهورية للاستفادة من الحوافز المقررة.';
-
-    return `
-    <div class="info-card" style="margin-top: 15px; border-right: 6px solid ${color}; background: #ffffff; box-shadow: 0 4px 12px rgba(0,0,0,0.05);">
-        <div class="info-card-header" style="background: ${color}; color: white; padding: 10px 20px; border-radius: 4px; font-weight: 600;">
-            <i class="fas fa-gift"></i> حوافز ${isSectorA ? 'القطاع (أ)' : 'القطاع (ب)'} المقررة
-        </div>
-        <div class="info-card-content">
-            <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 12px;">
-                <div style="font-size: 2rem;">💰</div>
-                <div>
-                    <div style="color: ${color}; font-weight: 800; font-size: 1.1rem;">خصم ضريبي بنسبة ${percentage}</div>
-                    <div style="color: #636e72; font-size: 0.85rem;">من التكلفة الاستثمارية للمشروع</div>
-                </div>
-            </div>
-            <p style="font-size: 0.95rem; color: #2d3436; line-height: 1.7; margin-bottom: 15px; padding: 10px; background: #f1f2f6; border-radius: 8px;">
-                يتمتع المشروع بخصم من صافي الأرباح الخاضعة للضريبة بنسبة <b>${percentage}</b> من التكاليف الاستثمارية، خصماً من الوعاء الضريبي لمدة أقصاها 7 سنوات من تاريخ بدء التشغيل.
-            </p>
-            <div style="background: ${color}11; padding: 12px; border-radius: 10px; border: 1px dashed ${color}; color: #2d3436; font-size: 0.9rem;">
-                <i class="fas fa-map-marked-alt" style="color: ${color};"></i> <b>نطاق الموقع المسموح:</b> ${locationInfo}
-            </div>
-        </div>
-    </div>
-    `;
-}
-
-
-/**
- * 🎨 دالة تنسيق احترافية (V4.1) تطابق مسميات القرار 104 
- * الميزة: معالجة ذكية للأنشطة التي تشير لنصوص قانونية وإبراز القطاعات الفرعية.
- */
-function formatSingleActivityInDecision104WithIncentives(activityName, itemData, searchScope) {
-    const sector = itemData.sector || 'A';
-    // توحيد مسمى القطاع وفقاً للقرار
-    const isSectorA = (sector === 'A' || sector === 'أ');
-    const sectorLabel = isSectorA ? 'القطاع (أ)' : 'القطاع (ب)';
-    const sectorColor = isSectorA ? '#4caf50' : '#2196f3';
-    
-    // ذكاء اصطناعي: إذا كان اسم النشاط مجرد نص قانوني بين قوسين، نستخدم اسم القطاع الفرعي كعنوان
-    let displayActivity = itemData.activity;
-    if (displayActivity.startsWith('(') && itemData.subSector) {
-        displayActivity = itemData.subSector;
-    }
-
-    let html = `
-    <div class="info-card" style="background: linear-gradient(135deg, ${isSectorA ? '#e8f5e9' : '#e3f2fd'}, white); border-left: 5px solid ${sectorColor};">
-        <div class="info-card-header" style="color: ${isSectorA ? '#2e7d32' : '#1565c0'}; border-bottom: 1px solid ${sectorColor}33; padding-bottom: 10px; margin-bottom: 15px;">
-            <i class="fas fa-gavel"></i> طبقاً لقرار رئيس مجلس الوزراء رقم 104 لسنة 2022
-        </div>
-        
-        <div class="info-card-content">
-            <div style="margin-bottom: 15px;">
-                <div style="color: #666; font-size: 0.85rem; margin-bottom: 4px;">🎯 النشاط المستهدف:</div>
-                <div style="font-size: 1.1rem; font-weight: 700; color: #2c3e50; line-height: 1.5;">
-                    ${displayActivity}
-                </div>
-                ${itemData.activity !== displayActivity ? `<div style="color: #7f8c8d; font-size: 0.85rem; margin-top: 5px; font-style: italic;">${itemData.activity}</div>` : ''}
-            </div>
-
-            <div style="display: grid; grid-template-columns: 1fr; gap: 10px;">
-                <div style="background: white; padding: 10px 15px; border-radius: 10px; border-right: 4px solid ${sectorColor}; box-shadow: 0 2px 5px rgba(0,0,0,0.05);">
-                    <span style="color: #666; font-size: 0.85rem;">📊 تصنيف القطاع الاستثماري:</span><br>
-                    <strong style="color: ${sectorColor}; font-size: 1.1rem;">${sectorLabel}</strong>
-                </div>
-                
-                <div style="background: white; padding: 10px 15px; border-radius: 10px; border-right: 4px solid #95a5a6; box-shadow: 0 2px 5px rgba(0,0,0,0.05);">
-                    <span style="color: #666; font-size: 0.85rem;">🏢 القطاع الرئيسي:</span><br>
-                    <strong style="color: #2c3e50;">${itemData.mainSector || 'الصناعة'}</strong>
-                </div>
-
-                ${itemData.subSector && itemData.subSector !== displayActivity ? `
-                <div style="background: white; padding: 10px 15px; border-radius: 10px; border-right: 4px solid #7f8c8d; box-shadow: 0 2px 5px rgba(0,0,0,0.05);">
-                    <span style="color: #666; font-size: 0.85rem;">📂 القطاع الفرعي:</span><br>
-                    <strong style="color: #2c3e50;">${itemData.subSector}</strong>
-                </div>` : ''}
-            </div>
-        </div>
-    </div>
-    `;
-    
-    // إلحاق الحوافز والضوابط المكانية
-    html += formatSectorIncentivesEnhanced(sector);
-    
-    return html;
-}
-
-/**
- * تنسيق حوافز القطاع - نسخة محسّنة
- */
 function formatSectorIncentivesEnhanced(sector, itemData) {
-    const sectorName = sector === 'A' ? 'القطاع أ' : 'القطاع ب';
-    const sectorColor = sector === 'A' ? '#4caf50' : '#2196f3';
+    const isSectorA = (sector === 'A' || sector === 'أ');
+    const sectorName = isSectorA ? 'القطاع أ' : 'القطاع ب';
+    const sectorColor = isSectorA ? '#4caf50' : '#2196f3';
     
     let incentives = '';
     
-    if (sector === 'A') {
+    if (isSectorA) {
         incentives = `
             <div style="background: white; padding: 14px; border-radius: 10px; margin: 10px 0; border-right: 4px solid #4caf50; box-shadow: 0 2px 8px rgba(76,175,80,0.15);">
                 <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 8px;">
@@ -1947,7 +1603,6 @@ function formatSectorIncentivesEnhanced(sector, itemData) {
                     ويشمل باقي أنحاء الجمهورية وفقا لتوزيع أنشطة الاستثمار، وذلك للمشروعات الاستثمارية الآتية 
                 </div>
             </div>
-            
         `;
     }
     
@@ -1967,7 +1622,6 @@ function formatSectorIncentivesEnhanced(sector, itemData) {
                         يجب أن تكون الشركة قد تأسست بعد العمل بقانون الاستثمار رقم 72 لسنة 2017
                     </div>
                 </div>
-<!-- زر تحميل ملف الحوافز الجديد -->
                 <a href="https://www.investinegypt.gov.eg/PublishingImages/Lists/ContentPageDetails/AllItems/%D8%AD%D9%88%D8%A7%D9%81%D8%B2%20%D8%A7%D9%84%D8%A7%D8%B3%D8%AA%D8%AB%D9%85%D8%A7%D8%B1.pdf" 
                    target="_blank" 
                    class="choice-btn" 
@@ -1978,10 +1632,7 @@ function formatSectorIncentivesEnhanced(sector, itemData) {
         </div>
     `;
 }
-/**
- * تنسيق رسالة عدم العثور على النشاط - النسخة الاحترافية الشاملة
- * تشمل: القوائم الكاملة، الأنشطة الرئيسية، وشروط/مواقع القطاعات
- */
+
 function formatActivityNotFoundInDecision104(activityName, sector) {
     const sectorText = sector === 'A' ? 'القطاع أ' : sector === 'B' ? 'القطاع ب' : 'القرار 104';
     
@@ -2031,12 +1682,6 @@ function formatActivityNotFoundInDecision104(activityName, sector) {
     `;
 }
 
-// ==================== 🆕 دوال تنسيق القرار 104 المفقودة ====================
-
-/**
- * دالة عرض المناطق الجغرافية للقطاع أ بالتفصيل
- * (تحل مشكلة ReferenceError: formatSectorARegionsDetailed is not defined)
- */
 function formatSectorARegionsDetailed() {
     return `
     <div class="info-card" style="background: linear-gradient(135deg, #e8f5e9, #ffffff); border-left: 4px solid #4caf50;">
@@ -2142,10 +1787,6 @@ function formatSectorARegionsDetailed() {
     `;
 }
 
-
-/**
- * دالة عرض المناطق الجغرافية للقطاع ب
- */
 function formatSectorBRegions() {
     return `
     <div class="info-card" style="background: linear-gradient(135deg, #e3f2fd, #ffffff); border-left: 4px solid #2196f3;">
@@ -2177,23 +1818,14 @@ function formatSectorBRegions() {
     `;
 }
 
-/**
- * دالة عرض حوافز القطاع (تربط مع الدالة المحسنة الموجودة سابقاً)
- */
 function formatSectorIncentives(sector) {
-    // نستخدم دالة وهمية للحصول على التنسيق، حيث أن formatSectorIncentivesEnhanced يتطلب itemData
-    // لكننا هنا نريد عرض الحوافز العامة فقط
     return formatSectorIncentivesEnhanced(sector, { activity: 'عرض عام' });
 }
 
-/**
- * دالة عرض قائمة الأنشطة لقطاع معين
- */
 function formatSectorActivities(sector) {
     const sectorName = sector === 'A' ? 'القطاع أ' : 'القطاع ب';
     const sectorColor = sector === 'A' ? '#4caf50' : '#2196f3';
     
-    // محاولة جلب البيانات
     let activitiesCount = 0;
     let dataSource = (sector === 'A') ? window.sectorAData : window.sectorBData;
     
@@ -2229,52 +1861,12 @@ function formatSectorActivities(sector) {
     </div>
     `;
 }
-// ==================== 🆕 نهاية دوال الأزرار الذكية ====================
-// ==================== 🆕 دوال الأزرار الذكية للبحث - نهاية ====================
 
-    function removeTypingIndicator(id) {
-        const el = document.getElementById(id);
-        if (el) el.remove();
-    }
-
-    function escapeHtml(text) {
-        return text
-            .replace(/&/g, "&amp;")
-            .replace(/</g, "&lt;")
-            .replace(/>/g, "&gt;")
-            .replace(/"/g, "&quot;")
-            .replace(/'/g, "&#039;");
-    }
-
-// ==================== 🆕 دوال عرض الشروط الخاصة والعامة للقطاع ب ====================
-
-/**
- * دالة فحص ما إذا كان يجب عرض الشروط العامة للقطاع ب
- * @param {string} mainSector - اسم القطاع الرئيسي
- * @returns {boolean}
- */
-function shouldShowGeneralConditions(mainSector) {
-    const applicableSectors = [
-        "السياحة",
-        "الاتصالات وتكنولوجيا المعلومات",
-        "البترول والثروات الطبيعية",
-        "الزراعة والإنتاج الحيواني الداجني والسمكي",
-        "النقل"
-    ];
-    
-    return applicableSectors.includes(mainSector);
-}
-
-/**
- * دالة تنسيق عرض الشروط الخاصة بنشاط النقل الجماعي (المدن الجديدة) في القطاع ب
- * @returns {string} HTML
- */
 function formatTransportSpecialConditions() {
-    // جلب البيانات من decision104.js (ستجلب الضوابط الـ 8 الجديدة)
     const conditions = window.decision104?.transportSpecialConditions;
     
     if (!conditions) {
-        return ''; // إذا لم تكن البيانات متوفرة، لا نعرض شيئاً
+        return '';
     }
     
     let html = `
@@ -2295,7 +1887,6 @@ function formatTransportSpecialConditions() {
                 <ul style="margin: 10px 0; padding-right: 20px; list-style-type: none;">
     `;
     
-    // إضافة الشروط الخاصة (الـ 8 ضوابط التي حددتها)
     conditions.conditions.forEach((condition, index) => {
         html += `
                     <li style="margin-bottom: 8px; position: relative; padding-right: 25px;">
@@ -2314,15 +1905,39 @@ function formatTransportSpecialConditions() {
     return html;
 }
 
+function shouldShowGeneralConditions(mainSector) {
+    const applicableSectors = [
+        "السياحة",
+        "الاتصالات وتكنولوجيا المعلومات",
+        "البترول والثروات الطبيعية",
+        "الزراعة والإنتاج الحيواني الداجني والسمكي",
+        "النقل"
+    ];
+    
+    return applicableSectors.includes(mainSector);
+}
+
+function formatSectorBGeneralConditions() {
+    // هذه دالة افتراضية، يمكن تخصيصها حسب الحاجة
+    return `
+    <div style="background: #e3f2fd; padding: 16px; border-radius: 12px; border-right: 4px solid #2196f3; color: #1565c0; margin-bottom: 20px; line-height: 1.6;">
+        <strong>📌 الشروط العامة للقطاع ب:</strong>
+        <ul style="margin-top: 8px; padding-right: 20px;">
+            <li>يجب أن يكون النشاط مدرجاً في قوائم القرار 104.</li>
+            <li>تأسيس الشركة بعد قانون الاستثمار 72 لسنة 2017.</li>
+            <li>الالتزام بالاشتراطات البيئية والتراخيص اللازمة.</li>
+        </ul>
+    </div>
+    `;
+}
+
 window.toggleExpandChat = function() {
     const container = document.getElementById('gptChatContainer');
     const expandBtn = document.getElementById('gptExpandBtn');
     const icon = expandBtn.querySelector('i');
     
-    // تبديل فئة التوسيع
     container.classList.toggle('expanded');
     
-    // تغيير الأيقونة بناءً على الحالة
     if (container.classList.contains('expanded')) {
         icon.classList.replace('fa-expand-alt', 'fa-compress-alt');
         expandBtn.title = "تصغير النافذة";
@@ -2331,12 +1946,187 @@ window.toggleExpandChat = function() {
         expandBtn.title = "توسيع النافذة";
     }
     
-    // تركيز تلقائي على حقل الإدخال بعد التوسيع
     setTimeout(() => {
         document.getElementById('gptInput').focus();
     }, 400);
 };
-// التصدير للنطاق العالمي لضمان إمكانية الاستدعاء من gpt_agent.js
+
+// ==================== 🆕 دوال الأزرار الذكية للبحث - النسخة المُصلحة ====================
+
+/**
+ * عرض الأزرار الذكية للبحث عن النشاط في القرار 104
+ * النسخة المُصلحة - تحل مشكلة ظهور النص خارج الأزرار
+ * @param {string} activityName - اسم النشاط المحدد
+ * @returns {string} HTML الأزرار
+ */
+function showSmartSearchButtons(activityName) {
+    const escapedActivity = escapeForJS(activityName);
+    
+    return '<div class="smart-search-container">' +
+        '<div class="smart-search-header">' +
+            '<i class="fas fa-search"></i>' +
+            '<span>للبحث فى قرار مجلس الوزراء رقم 104</span>' +
+        '</div>' +
+        '<div class="smart-search-text">يمكنك البحث عن هذا النشاط بسرعة باستخدام الأزرار التالية:</div>' +
+        '<div class="smart-search-buttons">' +
+            '<div class="smart-btn smart-btn-comprehensive" onclick="window.gptAgent.smartSearch(\'' + escapedActivity + '\', \'comprehensive\')">' +
+                '<div class="smart-btn-left">' +
+                    '<div class="smart-btn-icon"><i class="fas fa-globe"></i></div>' +
+                    '<div class="smart-btn-text">هل نشاط ' + activityName + ' وارد بالقرار 104</div>' +
+                '</div>' +
+                '<i class="fas fa-arrow-left smart-btn-arrow"></i>' +
+            '</div>' +
+            '<div class="smart-btn smart-btn-sector-a" onclick="window.gptAgent.smartSearch(\'' + escapedActivity + '\', \'sectorA\')">' +
+                '<div class="smart-btn-left">' +
+                    '<div class="smart-btn-icon"><i class="fas fa-industry"></i></div>' +
+                    '<div class="smart-btn-text">هل نشاط ' + activityName + ' وارد بالقطاع أ</div>' +
+                '</div>' +
+                '<i class="fas fa-arrow-left smart-btn-arrow"></i>' +
+            '</div>' +
+            '<div class="smart-btn smart-btn-sector-b" onclick="window.gptAgent.smartSearch(\'' + escapedActivity + '\', \'sectorB\')">' +
+                '<div class="smart-btn-left">' +
+                    '<div class="smart-btn-icon"><i class="fas fa-building"></i></div>' +
+                    '<div class="smart-btn-text">هل نشاط ' + activityName + ' وارد بالقطاع ب</div>' +
+                '</div>' +
+                '<i class="fas fa-arrow-left smart-btn-arrow"></i>' +
+            '</div>' +
+        '</div>' +
+    '</div>';
+}
+
+/**
+ * عرض الحوافز مباشرة - النسخة النهائية المصححة (Fix 'bot' to 'ai')
+ */
+function smartSearchFixed(activityName, searchType) {
+    console.log(`🎯 [Smart Search] النشاط: "${activityName}" - النوع: ${searchType}`);
+    
+    const context = AgentMemory.getContext();
+    let currentActivity = activityName;
+    
+    if (context && (context.type === 'activity' || context.type === 'decision_activity')) {
+        currentActivity = context.data.text || context.data.name || activityName;
+    }
+    
+    let results = [];
+    let sector = null;
+    
+    switch(searchType) {
+        case 'comprehensive':
+            results = enhancedSearchInDecision104(currentActivity, null);
+            break;
+        case 'sectorA':
+            results = enhancedSearchInDecision104(currentActivity, 'A');
+            sector = 'A';
+            break;
+        case 'sectorB':
+            results = enhancedSearchInDecision104(currentActivity, 'B');
+            sector = 'B';
+            break;
+    }
+    
+    if (sector) {
+        results = results.filter(r => r.sector === sector || r.item.sector === sector);
+    }
+    
+    results = deduplicateResults(results);
+    
+    console.log(`📊 [Smart Search] عدد النتائج: ${results.length}`);
+    
+    let responseHTML = '';
+    
+    if (!results || results.length === 0) {
+        responseHTML = formatActivityNotFoundInDecision104(currentActivity, sector);
+    } else if (results.length === 1) {
+        const result = results[0];
+        const itemData = result.item || result;
+        
+        responseHTML = formatSingleActivityInDecision104WithIncentives(
+            currentActivity,
+            itemData,
+            sector || 'both'
+        );
+        
+        AgentMemory.setDecisionActivity(itemData, currentActivity);
+    } else {
+        responseHTML = formatEnhancedMultipleResults(currentActivity, results, sector || 'both');
+    }
+    
+    addMessageToUI('ai', responseHTML);
+}
+
+/**
+ * دالة مساعدة لتنسيق النتائج المتعددة (إذا لم تكن موجودة)
+ */
+function formatEnhancedMultipleResults(activityName, results, scope) {
+    return formatMultipleActivitiesInDecision104WithBothSectorsFixed(activityName, results, scope);
+}
+
+// ==================== دالة checkDecision104Full المطلوبة ====================
+
+window.checkDecision104Full = function(activityName) {
+    if (typeof window.decision104 === 'undefined' || !window.decision104.unifiedSearchDB) {
+        return null;
+    }
+    
+    const found = window.decision104.unifiedSearchDB.find(item => 
+        activityName.includes(item.activity) || item.activity.includes(activityName)
+    );
+    
+    if (found) {
+        return `<div class="decision-badge">
+                ⭐ هذا النشاط مدرج في القرار 104 لسنة 2022            </div>
+            <div class="info-card" style="background: linear-gradient(135deg, #fff9c4, #fffde7); border-left-color: #f57f17;">
+                <div class="info-card-header" style="color: #f57f17;">
+                    🎯 تفاصيل القرار 104
+                </div>
+                <div class="info-card-content" style="color: #e65100;">
+                    <div class="info-row">
+                        <div class="info-label">📊 القطاع:</div>
+                        <div class="info-value"><strong>القطاع ${found.sector}</strong></div>
+                    </div>
+                    <div class="info-row">
+                        <div class="info-label">🏢 القطاع الرئيسي:</div>
+                        <div class="info-value">${found.mainSector}</div>
+                    </div>
+                    <div class="info-row">
+                        <div class="info-label">📂 القطاع الفرعي:</div>
+                        <div class="info-value">${found.subSector}</div>
+                    </div>
+                    <div class="info-row">
+                        <div class="info-label">💰 الحوافز:</div>
+                        <div class="info-value">يتمتع بالحوافز والإعفاءات المقررة</div>
+                    </div>
+                </div>
+            </div>`;
+    }
+    
+    const smartButtons = showSmartSearchButtons(activityName);
+    
+    return `${smartButtons}
+<div style="background: #fdf6f0; border-right: 4px solid #d97706; padding: 16px; border-radius: 12px; margin: 15px 0; font-family: sans-serif; direction: rtl;">
+    <div style="display: flex; align-items: center; margin-bottom: 8px;">
+        <span style="font-size: 20px; margin-left: 10px;">🔍</span>
+        <strong style="color: #92400e; font-size: 15px;">كما يمكنك استخدام المايك لمعرفة هل النشاط وارد بالقرار 104:</strong>
+    </div>
+    
+    <ul style="margin: 0; padding-right: 20px; color: #4b5563; font-size: 13px; line-height: 1.6;">
+        <li style="margin-bottom: 8px;">
+            <strong>للبحث الشامل:</strong> 
+            <code style="background: #fef3c7; padding: 2px 6px; border-radius: 4px; color: #b45309;">هل نشاط (اسم النشاط) وارد بالقرار 104</code>
+        </li>
+        <li>
+            <strong>للبحث في قطاع محدد:</strong> 
+            <span style="display: block; margin-top: 4px; color: #6b7280;">
+                • هل نشاط (اسم النشاط) وارد بـ <span style="color: #d97706; font-weight: bold;">القطاع أ</span><br>
+                • هل نشاط (اسم النشاط) وارد بـ <span style="color: #d97706; font-weight: bold;">القطاع ب</span>
+            </span>
+        </li>
+    </ul>
+</div>`;
+};
+
+// ==================== التصدير للنطاق العالمي ====================
+
 window.formatSingleActivityInDecision104WithIncentives = formatSingleActivityInDecision104WithIncentives;
 window.formatSectorIncentivesEnhanced = formatSectorIncentivesEnhanced;
 window.formatActivityNotFoundInDecision104 = formatActivityNotFoundInDecision104;
@@ -2344,10 +2134,8 @@ window.formatSectorARegionsDetailed = formatSectorARegionsDetailed;
 window.formatSectorBRegions = formatSectorBRegions;
 window.formatSectorIncentives = formatSectorIncentives;
 window.formatSectorActivities = formatSectorActivities;
-window.gptAgent.showSmartSearchButtons = showSmartSearchButtons;
+window.gptAgent = window.gptAgent || {};
 window.gptAgent.smartSearch = smartSearchFixed;
-
-
-
-
-
+window.gptAgent.showSmartSearchButtons = showSmartSearchButtons;
+window.showSmartSearchButtons = showSmartSearchButtons; // للاستخدام المباشر
+window.smartSearchFixed = smartSearchFixed;
