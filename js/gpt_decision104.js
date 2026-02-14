@@ -345,7 +345,21 @@ function deduplicateResults(results) {
 
 // ==================== 🎯 handleDecision104Query - النسخة الذكية ====================
 
-function handleDecision104Query(query, questionType) {
+function handleDecision104Query(query, questionType, preFoundItem = null) {
+    // 1. إذا قام المحرك الدلالي بإيجاد نتيجة جاهزة، نعرضها فوراً دون بحث جديد
+    if (preFoundItem) {
+        console.log("✅ استلام نتيجة جاهزة من المحرك الدلالي:", preFoundItem.activity);
+        
+        // حفظ في الذاكرة
+        if (window.AgentMemory) {
+            AgentMemory.setDecisionActivity(preFoundItem, query);
+        }
+        
+        // عرض التنسيق الجمالي فوراً
+        return formatSingleActivityInDecision104WithIncentives(query, preFoundItem, preFoundItem.sector);
+    }
+
+    // 2. إذا لم توجد نتيجة جاهزة (بحث يدوي)، نتبع مسار البحث التقليدي
     let q = normalizeArabic(query).replace(/القطا\s+ع/g, 'القطاع').replace(/\s+/g, ' ').trim();
     
     console.log("🎯 محرك القرار 104: بدء المعالجة لـ:", query);
@@ -2091,3 +2105,4 @@ window.gptAgent.smartSearch = smartSearchFixed;
 window.gptAgent.showSmartSearchButtons = showSmartSearchButtons;
 window.showSmartSearchButtons = showSmartSearchButtons; // للاستخدام المباشر
 window.smartSearchFixed = smartSearchFixed;
+
