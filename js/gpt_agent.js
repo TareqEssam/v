@@ -1560,26 +1560,37 @@ async function processUserQuery(query) {
         
         if (vectorTargetDB === 'decision104') {
              // استخراج البيانات مباشرة من قاعدة البيانات
-             const activity = unifiedSearchDB?.find(item => item.id === vectorMatch.id);
-
+             // استخراج البيانات من vectorMatch نفسه (يحتوي على original_data)
+             const originalData = vectorMatch.data?.original_data;
              
-             if (activity) {
-                 console.log(`✅ تم العثور على النشاط: ${activity.name}`);
+             if (originalData && originalData.sub_activity) {
+                 const activityName = originalData.sub_activity;
+                 const sector = originalData.sector_type === 'القطاع أ' ? 'A' : 'B';
+                 
+                 console.log(`✅ تم استخراج النشاط من المحرك الدلالي: ${activityName}`);
+                 
+                 // بناء كائن النشاط بنفس البنية المتوقعة
+                 const activityObject = {
+                     activity: activityName,
+                     mainSector: originalData.sector,
+                     subSector: originalData.main_activity,
+                     sector: sector
+                 };
                  
                  // عرض النتيجة مباشرة
-                 displayDecision104Result([activity], query);
+                 displayDecision104Result([activityObject], query);
                  
                  // حفظ في الذاكرة
                  window.chatMemory = window.chatMemory || [];
                  window.chatMemory.push({
                      type: 'decision_activity',
-                     name: activity.name,
-                     sector: activity.sector || 'غير محدد'
+                     name: activityName,
+                     sector: sector
                  });
                  
                  return; // إيقاف المعالجة
              } else {
-                 console.warn(`⚠️ لم يتم العثور على المعرف ${vectorMatch.id} في قاعدة البيانات - استخدام البحث النصي`);
+                 console.warn(`⚠️ لم يتم العثور على البيانات في vectorMatch - استخدام البحث النصي`);
                  // الاستمرار للبحث النصي كخطة بديلة
                  return handleDecision104Query(query, questionType);
              }
@@ -3556,6 +3567,7 @@ console.log('✅ GPT Agent v9.0 - Core initialized!');
     console.log('🆕 Mobile Optimized: ENABLED 📱');
     console.log('🆕 Fullscreen Expand: ENABLED 🖥️');
 }
+
 
 
 
