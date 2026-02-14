@@ -2819,7 +2819,7 @@ window.toggleExpandChat = function() {
         const input = document.getElementById('gptInput');
         if(input) input.focus();
     }, 400);
-};
+
 
 // سطر أمان إضافي في نهاية الملف
 console.log('✅ GPT Agent v9.0 - Refined with Context Routing');
@@ -2842,6 +2842,7 @@ console.log('✅ GPT Agent v9.0 - Core initialized!');
     console.log('🆕 Mobile Optimized: ENABLED 📱');
     console.log('🆕 Fullscreen Expand: ENABLED 🖥️');
 }
+
 
 
 
