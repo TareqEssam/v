@@ -137,7 +137,10 @@ class HybridSearchEngine {
     async embed(text) {
         if (!this.embedder) throw new Error("Embedder not initialized");
         
-        const queryText = text.startsWith('query:') ? text : `query: ${text}`;
+        // نضمن إزالة أي بادئة قديمة وإضافة بادئة البحث الصحيحة لنموذج E5
+        const cleanText = text.replace(/^(query:|passage:)\s*/, '');
+        const queryText = `query: ${cleanText}`;
+        
         const output = await this.embedder(queryText, { 
             pooling: 'mean', 
             normalize: true 
@@ -369,3 +372,4 @@ class HybridSearchEngine {
 }
 
 export const hybridEngine = new HybridSearchEngine();
+
