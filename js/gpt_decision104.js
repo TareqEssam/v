@@ -1803,6 +1803,517 @@ function formatSectorIncentivesEnhanced(sector) {
     `;
 }
 
+
+/**
+ * 🎨 دالة تنسيق احترافية (V4.1) تطابق مسميات القرار 104 
+ * الميزة: معالجة ذكية للأنشطة التي تشير لنصوص قانونية وإبراز القطاعات الفرعية.
+ */
+function formatSingleActivityInDecision104WithIncentives(activityName, itemData, searchScope) {
+    const sector = itemData.sector || 'A';
+    // توحيد مسمى القطاع وفقاً للقرار
+    const isSectorA = (sector === 'A' || sector === 'أ');
+    const sectorLabel = isSectorA ? 'القطاع (أ)' : 'القطاع (ب)';
+    const sectorColor = isSectorA ? '#4caf50' : '#2196f3';
+    
+    // ذكاء اصطناعي: إذا كان اسم النشاط مجرد نص قانوني بين قوسين، نستخدم اسم القطاع الفرعي كعنوان
+    let displayActivity = itemData.activity;
+    if (displayActivity.startsWith('(') && itemData.subSector) {
+        displayActivity = itemData.subSector;
+    }
+
+    let html = `
+    <div class="info-card" style="background: linear-gradient(135deg, ${isSectorA ? '#e8f5e9' : '#e3f2fd'}, white); border-left: 5px solid ${sectorColor};">
+        <div class="info-card-header" style="color: ${isSectorA ? '#2e7d32' : '#1565c0'}; border-bottom: 1px solid ${sectorColor}33; padding-bottom: 10px; margin-bottom: 15px;">
+            <i class="fas fa-gavel"></i> طبقاً لقرار رئيس مجلس الوزراء رقم 104 لسنة 2022
+        </div>
+        
+        <div class="info-card-content">
+            <div style="margin-bottom: 15px;">
+                <div style="color: #666; font-size: 0.85rem; margin-bottom: 4px;">🎯 النشاط المستهدف:</div>
+                <div style="font-size: 1.1rem; font-weight: 700; color: #2c3e50; line-height: 1.5;">
+                    ${displayActivity}
+                </div>
+                ${itemData.activity !== displayActivity ? `<div style="color: #7f8c8d; font-size: 0.85rem; margin-top: 5px; font-style: italic;">${itemData.activity}</div>` : ''}
+            </div>
+
+            <div style="display: grid; grid-template-columns: 1fr; gap: 10px;">
+                <div style="background: white; padding: 10px 15px; border-radius: 10px; border-right: 4px solid ${sectorColor}; box-shadow: 0 2px 5px rgba(0,0,0,0.05);">
+                    <span style="color: #666; font-size: 0.85rem;">📊 تصنيف القطاع الاستثماري:</span><br>
+                    <strong style="color: ${sectorColor}; font-size: 1.1rem;">${sectorLabel}</strong>
+                </div>
+                
+                <div style="background: white; padding: 10px 15px; border-radius: 10px; border-right: 4px solid #95a5a6; box-shadow: 0 2px 5px rgba(0,0,0,0.05);">
+                    <span style="color: #666; font-size: 0.85rem;">🏢 القطاع الرئيسي:</span><br>
+                    <strong style="color: #2c3e50;">${itemData.mainSector || 'الصناعة'}</strong>
+                </div>
+
+                ${itemData.subSector && itemData.subSector !== displayActivity ? `
+                <div style="background: white; padding: 10px 15px; border-radius: 10px; border-right: 4px solid #7f8c8d; box-shadow: 0 2px 5px rgba(0,0,0,0.05);">
+                    <span style="color: #666; font-size: 0.85rem;">📂 القطاع الفرعي:</span><br>
+                    <strong style="color: #2c3e50;">${itemData.subSector}</strong>
+                </div>` : ''}
+            </div>
+        </div>
+    </div>
+    `;
+    
+    // إلحاق الحوافز والضوابط المكانية
+    html += formatSectorIncentivesEnhanced(sector);
+    
+    return html;
+}
+
+/**
+ * تنسيق حوافز القطاع - نسخة محسّنة
+ */
+function formatSectorIncentivesEnhanced(sector, itemData) {
+    const sectorName = sector === 'A' ? 'القطاع أ' : 'القطاع ب';
+    const sectorColor = sector === 'A' ? '#4caf50' : '#2196f3';
+    
+    let incentives = '';
+    
+    if (sector === 'A') {
+        incentives = `
+            <div style="background: white; padding: 14px; border-radius: 10px; margin: 10px 0; border-right: 4px solid #4caf50; box-shadow: 0 2px 8px rgba(76,175,80,0.15);">
+                <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 8px;">
+                    <span style="font-size: 24px;">💰</span>
+                    <strong style="color: #2e7d32;">خصم 50% من صافي الأرباح الخاضعة للضريبة من التكاليف الاستثمارية. يشمل ذلك المناطق الجغرافية الأكثر احتياجًا للتنمية وفقًا للخريطة الاستثمارية وقرارات رئيس مجلس الوزراء.</strong>
+                </div>
+                <div style="color: #666; font-size: 0.9em; padding-right: 34px;">
+                    يجب ألا يتجاوز الحافز الاستثماري نسبة 80% من رأس المال المدفوع حتى تاريخ بدء مزاولة النشاط، وألا تزيد مدة الخصم على 7 سنوات من تاريخ بدء مزاولة النشاط. كما تشمل الحوافز العامة
+                </div>
+            </div>
+            
+            <div style="background: white; padding: 14px; border-radius: 10px; margin: 10px 0; border-right: 4px solid #4caf50; box-shadow: 0 2px 8px rgba(76,175,80,0.15);">
+                <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 8px;">
+                    <span style="font-size: 24px;">🏗️</span>
+                    <strong style="color: #2e7d32;">الإعفاء من ضريبة الدمغة ورسوم التوثيق والشهر لمدة خمس سنوات.</strong>
+                </div>
+                <div style="color: #666; font-size: 0.9em; padding-right: 34px;">
+                    ستم الإعفاء من ضريبة الدمغة ورسوم التوثيق والشهر لمدة خمس سنوات فقط
+                </div>
+            </div>
+            
+            <div style="background: white; padding: 14px; border-radius: 10px; margin: 10px 0; border-right: 4px solid #4caf50; box-shadow: 0 2px 8px rgba(76,175,80,0.15);">
+                <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 8px;">
+                    <span style="font-size: 24px;">📝</span>
+                    <strong style="color: #2e7d32;">تطبيق ضريبة جمركية موحدة على المعدات والآلات اللازمة لإنشاء المشروع.</strong>
+                </div>
+                <div style="color: #666; font-size: 0.9em; padding-right: 34px;">
+                    ويشمل المناطق الجغرافية الأكثر احتياجا للتنمية طبقا للخريطة الاستثمارية وبناء على البيانات والإحصاءات الصادرة من الجهاز المركزي للتعبئة العامة والاحصاء، المعتمدة بالخطة العامة للتنمية الاقتصادية
+                </div>
+            </div>
+            
+            <div style="background: white; padding: 14px; border-radius: 10px; margin: 10px 0; border-right: 4px solid #4caf50; box-shadow: 0 2px 8px rgba(76,175,80,0.15);">
+                <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 8px;">
+                    <span style="font-size: 24px;">⭐</span>
+                    <strong style="color: #2e7d32;"> المشروعات في المناطق الأقل نمواً</strong>
+                </div>
+                <div style="color: #666; font-size: 0.9em; padding-right: 34px;">
+                    ويشمل هذا القطاع المنطقة الاقتصادية لقناة السويس، والمنطقة الاقتصادية للمثلث الذهبي، والمناطق الأخرى الأكثر احتياجا للتنمية التي تتصف بانخفاض مستويات التنمية الاقتصادية، والناتج المحلى، ومستويات التشغيل، وفرص العمل، وجودة التعليم، والخدمات الصحية، وارتفاع معدلات البطالة، والكثافة السكانية، ونسب الأمية،ومعدلات الفقر
+                </div>
+            </div>
+        `;
+    } else {
+        incentives = `
+            <div style="background: white; padding: 14px; border-radius: 10px; margin: 10px 0; border-right: 4px solid #2196f3; box-shadow: 0 2px 8px rgba(33,150,243,0.15);">
+                <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 8px;">
+                    <span style="font-size: 24px;">💰</span>
+                    <strong style="color: #1565c0;">خصم 30% من التكاليف الاستثمارية </strong>
+                </div>
+                <div style="color: #666; font-size: 0.9em; padding-right: 34px;">
+                    ويشمل باقي أنحاء الجمهورية وفقا لتوزيع أنشطة الاستثمار، وذلك للمشروعات الاستثمارية الآتية 
+                </div>
+            </div>
+            
+        `;
+    }
+    
+    return `
+        <div class="info-card" style="margin-top: 16px; background: linear-gradient(135deg, ${sectorColor}10, white); border-left: 4px solid ${sectorColor};">
+            <div class="info-card-header" style="background: ${sectorColor}; color: white;">
+                🎁 الحوافز الاستثمارية لـ ${sectorName}
+            </div>
+            <div class="info-card-content">
+                ${incentives}
+                
+                <div style="background: #fff3e0; padding: 12px; border-radius: 8px; margin-top: 16px; border: 1px solid #ffe0b2;">
+                    <div style="color: #e65100; font-weight: 600; margin-bottom: 6px;">
+                        ⚠️ شرط أساسي للحصول على الحوافز
+                    </div>
+                    <div style="color: #bf360c; font-size: 0.9em; line-height: 1.6;">
+                        يجب أن تكون الشركة قد تأسست بعد العمل بقانون الاستثمار رقم 72 لسنة 2017
+                    </div>
+                </div>
+<!-- زر تحميل ملف الحوافز الجديد -->
+                <a href="https://www.investinegypt.gov.eg/PublishingImages/Lists/ContentPageDetails/AllItems/%D8%AD%D9%88%D8%A7%D9%81%D8%B2%20%D8%A7%D9%84%D8%A7%D8%B3%D8%AA%D8%AB%D9%85%D8%A7%D8%B1.pdf" 
+                   target="_blank" 
+                   class="choice-btn" 
+                   style="margin-top: 15px; text-decoration: none; background: linear-gradient(135deg, #ef5350, #d32f2f); color: white; justify-content: center; font-weight: bold; border: none; box-shadow: 0 4px 15px rgba(211, 47, 47, 0.2);">
+                    <i class="fas fa-file-pdf" style="margin-left: 8px;"></i> عرض ملف حوافز الاستثمار (PDF)
+                </a>
+            </div>
+        </div>
+    `;
+}
+/**
+ * تنسيق رسالة عدم العثور على النشاط - النسخة الاحترافية الشاملة
+ * تشمل: القوائم الكاملة، الأنشطة الرئيسية، وشروط/مواقع القطاعات
+ */
+function formatActivityNotFoundInDecision104(activityName, sector) {
+    const sectorText = sector === 'A' ? 'القطاع أ' : sector === 'B' ? 'القطاع ب' : 'القرار 104';
+    
+    return `
+    <div class="info-card" style="background: linear-gradient(135deg, #fff3e0, #ffe0b2); border-left: 4px solid #ff9800; margin-bottom: 15px;">
+        <div class="info-card-header" style="color: #e65100;">
+            ⚠️ لم يتم العثور على النشاط في ${sectorText}
+        </div>
+        <div class="info-card-content" style="color: #bf360c;">
+            <p>المسمى "<strong>${activityName}</strong>" غير مدرج بشكل حرفي في قوائم القرار.</p>
+            <div style="background: #fff; padding: 10px; border-radius: 8px; margin-top: 8px; font-size: 0.9em; color: #666;">
+                💡 يمكنك استكشاف القطاعات يدوياً عبر الخيارات التالية:
+            </div>
+        </div>
+    </div>
+    
+    <!-- أولاً: أزرار القوائم الكاملة -->
+    <div class="choice-btn" onclick="sendMessage('ما هي أنشطة القطاع أ')">
+        <span class="choice-icon">📋</span> قائمة كافة أنشطة القطاع أ
+    </div>
+    
+    <div class="choice-btn" onclick="sendMessage('ما هي أنشطة القطاع ب')">
+        <span class="choice-icon">📋</span> قائمة كافة أنشطة القطاع ب
+    </div>
+
+    <hr style="border: 0; border-top: 1px solid #eee; margin: 15px 0;">
+
+    <!-- ثانياً: شبكة الأنشطة الرئيسية (A & B) -->
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 8px;">
+        <div class="choice-btn" onclick="sendMessage('الأنشطة الرئيسية للقطاع أ')" style="margin:0; font-size: 0.85em; background: #f1f8e9; border-color: #c8e6c9;">
+            <span class="choice-icon">📁</span> الأنشطة الرئيسية (أ)
+        </div>
+        <div class="choice-btn" onclick="sendMessage('الأنشطة الرئيسية للقطاع ب')" style="margin:0; font-size: 0.85em; background: #e3f2fd; border-color: #bbdefb;">
+            <span class="choice-icon">📁</span> الأنشطة الرئيسية (ب)
+        </div>
+    </div>
+
+    <!-- ثالثاً: شبكة المعلومات الخاصة (مواقع أ & شروط ب) -->
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+        <div class="choice-btn" onclick="sendMessage('ما هي المناطق الجغرافيه للقطاع أ')" style="margin:0; font-size: 0.85em; background: #fffde7; border: 1px dashed #fbc02d; color: #f57f17;">
+            <span class="choice-icon">🗺️</span> مواقع القطاع (أ)
+        </div>
+        <div class="choice-btn" onclick="sendMessage('عرض الشروط العامة والخاصة للقطاع ب')" style="margin:0; font-size: 0.85em; background: #f0f7ff; border: 1px dashed #2196f3; color: #1565c0;">
+            <span class="choice-icon">⚖️</span> شروط القطاع (ب)
+        </div>
+    </div>
+    `;
+}
+
+// ==================== 🆕 دوال تنسيق القرار 104 المفقودة ====================
+
+/**
+ * دالة عرض المناطق الجغرافية للقطاع أ بالتفصيل
+ * (تحل مشكلة ReferenceError: formatSectorARegionsDetailed is not defined)
+ */
+function formatSectorARegionsDetailed() {
+    return `
+    <div class="info-card" style="background: linear-gradient(135deg, #e8f5e9, #ffffff); border-left: 4px solid #4caf50;">
+        <div class="info-card-header" style="color: #2e7d32;">
+            🗺️ المناطق الجغرافية للقطاع (أ)
+            <span style="font-size: 0.8em; background: #4caf50; color: white; padding: 2px 8px; border-radius: 10px; margin-right: 8px;">الأكثر احتياجاً للتنمية</span>
+        </div>
+        <div class="info-card-content" style="color: #1b5e20;">
+            تتميز هذه المناطق بأعلى نسبة حوافز (خصم 50% من التكاليف الاستثمارية من صافي الأرباح الخاضعة للضريبة).
+        </div>
+    </div>
+    <div class="area-list" style="max-height: 400px; overflow-y: auto;">
+        <div class="area-item" style="border-right: 4px solid #4caf50;">
+            <div style="display: flex; align-items: center; gap: 10px;">
+                <span style="background: #e8f5e9; padding: 8px; border-radius: 50%;">🚢</span>
+                <div>
+                    <strong>1. المنطقة الاقتصادية لقناة السويس</strong>
+                    <br><small style="color: #666;">المنطقة الاقتصادية ذات الطبيعة الخاصة</small>
+                </div>
+            </div>
+        </div>
+        
+        <div class="area-item" style="border-right: 4px solid #4caf50;">
+            <div style="display: flex; align-items: center; gap: 10px;">
+                <span style="background: #e8f5e9; padding: 8px; border-radius: 50%;">🔺</span>
+                <div>
+                    <strong>2. منطقة المثلث الذهبي</strong>
+                    <br><small style="color: #666;">(المثلث الذهبي)</small>
+                </div>
+            </div>
+        </div>
+        
+        <div class="area-item" style="border-right: 4px solid #4caf50;">
+            <div style="display: flex; align-items: center; gap: 10px;">
+                <span style="background: #e8f5e9; padding: 8px; border-radius: 50%;">🏙️</span>
+                <div>
+                    <strong>3. العاصمة الإدارية الجديدة</strong>
+                    <br><small style="color: #666;">وفقاً للخريطة الاستثمارية</small>
+                </div>
+            </div>
+        </div>
+
+        <div class="area-item" style="border-right: 4px solid #4caf50;">
+            <div style="display: flex; align-items: center; gap: 10px;">
+                <span style="background: #e8f5e9; padding: 8px; border-radius: 50%;">🏙️</span>
+                <div>
+                    <strong>4.   منطقة رأس الحكمة</strong>
+                    <br><small style="color: #666;">وفقاً للخريطة الاستثمارية</small>
+                </div>
+            </div>
+        </div>
+
+        
+        <div class="area-item" style="border-right: 4px solid #4caf50;">
+            <div style="display: flex; align-items: center; gap: 10px;">
+                <span style="background: #e8f5e9; padding: 8px; border-radius: 50%;">🏭</span>
+                <div>
+                    <strong>5. جنوب محافظة الجيزة</strong>
+                    <br><small style="color: #666;">الواحات البحرية – الصف - العياط</small>
+                </div>
+            </div>
+        </div>
+        
+        <div class="area-item" style="border-right: 4px solid #4caf50;">
+            <div style="display: flex; align-items: center; gap: 10px;">
+                <span style="background: #e8f5e9; padding: 8px; border-radius: 50%;">🏜️</span>
+                <div>
+                    <strong>6. محافظات الصعيد</strong>
+                    <br><small style="color: #666;">الفيوم – بني سويف - المنيا – أسيوط – سوهاج – قنا – الأقصر - أسوان</small>
+                </div>
+            </div>
+        </div>
+
+        
+        <div class="area-item" style="border-right: 4px solid #4caf50;">
+            <div style="display: flex; align-items: center; gap: 10px;">
+                <span style="background: #e8f5e9; padding: 8px; border-radius: 50%;">🏜️</span>
+                <div>
+                    <strong>7. محافظة القاهرة الكبري لنشاط السياحة فقط</strong>
+                    <br><small style="color: #666;">القاهرة –  الجيزة القليوبية</small>
+                </div>
+            </div>
+        </div>
+              
+        
+        <div class="area-item" style="border-right: 4px solid #4caf50;">
+            <div style="display: flex; align-items: center; gap: 10px;">
+                <span style="background: #e8f5e9; padding: 8px; border-radius: 50%;">🛂</span>
+                <div>
+                    <strong>8. محافظات الحدود</strong>
+                    <br><small style="color: #666;">أسوان – مرسي مطروح – جنوب سيناء - شمال سيناء - الوادي الجديد – محافظة البحر الأحمر من جنوب سفاجا</small>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div style="margin-top: 15px; padding: 12px; background: #f1f8e9; border-radius: 8px; border: 1px solid #c8e6c9;">
+        <strong style="color: #2e7d32;">💡 قاعدة عامة:</strong>
+        <p style="margin: 5px 0 0 0; font-size: 0.9em; color: #33691e;">
+            أي نشاط يقع خارج هذه المناطق المحددة يعتبر تلقائياً ضمن <strong>القطاع (ب)</strong> ويتمتع بحوافز 30%، بشرط أن يكون النشاط مدرجاً في قوائم القرار.
+        </p>
+    </div>
+    `;
+}
+
+
+/**
+ * دالة عرض المناطق الجغرافية للقطاع ب
+ */
+function formatSectorBRegions() {
+    return `
+    <div class="info-card" style="background: linear-gradient(135deg, #e3f2fd, #ffffff); border-left: 4px solid #2196f3;">
+        <div class="info-card-header" style="color: #1565c0;">
+            🌍 المناطق الجغرافية للقطاع (ب)
+            <span style="font-size: 0.8em; background: #2196f3; color: white; padding: 2px 8px; border-radius: 10px; margin-right: 8px;">باقي أنحاء الجمهورية</span>
+        </div>
+        <div class="info-card-content" style="color: #0d47a1; font-size: 1.05rem; line-height: 1.7;">
+            يغطي هذا القطاع <strong>جميع أنحاء الجمهورية</strong> (بخلاف المناطق المحددة للقطاع أ).
+            <br>
+            بمعنى أنه لا يوجد تقيد بمنطقة جغرافية معينة لممارسة النشاط.
+        </div>
+    </div>
+
+    <div style="background: #fff3e0; padding: 14px; border-radius: 10px; border: 1px solid #ffe0b2; margin-top: 15px;">
+        <div style="color: #e65100; font-weight: 600; margin-bottom: 8px; display: flex; align-items: center; gap: 8px;">
+            <i class="fas fa-exclamation-triangle"></i> الشرط الجوهري للاستحقاق
+        </div>
+        <div style="color: #bf360c; font-size: 0.95em; line-height: 1.6;">
+            رغم أن المنطقة مفتوحة، <strong>يجب</strong> أن يكون النشاط مدرجاً نصاً ضمن <strong>قوائم أنشطة القطاع (ب)</strong> الواردة بالقرار 104 للحصول على الحوافز.
+        </div>
+    </div>
+
+    <div style="margin-top: 15px;">
+        <div class="choice-btn" onclick="sendMessage('ما هي أنشطة القطاع ب')">
+            <span class="choice-icon">📋</span> التأكد من أنشطة القطاع ب
+        </div>
+    </div>
+    `;
+}
+
+/**
+ * دالة عرض حوافز القطاع (تربط مع الدالة المحسنة الموجودة سابقاً)
+ */
+function formatSectorIncentives(sector) {
+    // نستخدم دالة وهمية للحصول على التنسيق، حيث أن formatSectorIncentivesEnhanced يتطلب itemData
+    // لكننا هنا نريد عرض الحوافز العامة فقط
+    return formatSectorIncentivesEnhanced(sector, { activity: 'عرض عام' });
+}
+
+/**
+ * دالة عرض قائمة الأنشطة لقطاع معين
+ */
+function formatSectorActivities(sector) {
+    const sectorName = sector === 'A' ? 'القطاع أ' : 'القطاع ب';
+    const sectorColor = sector === 'A' ? '#4caf50' : '#2196f3';
+    
+    // محاولة جلب البيانات
+    let activitiesCount = 0;
+    let dataSource = (sector === 'A') ? window.sectorAData : window.sectorBData;
+    
+    if (dataSource) {
+        for (const main in dataSource) {
+            for (const sub in dataSource[main]) {
+                activitiesCount += dataSource[main][sub].length;
+            }
+        }
+    }
+    
+    return `
+    <div class="info-card" style="border-left: 4px solid ${sectorColor};">
+        <div class="info-card-header" style="color: ${sectorColor};">
+            📋 أنشطة ${sectorName}
+        </div>
+        <div class="info-card-content">
+            يحتوي هذا القطاع على حوالي <strong>${activitiesCount}</strong> نشاط استثماري متنوع.
+            <br><br>
+            نظراً لكثرة الأنشطة، يفضل البحث عن نشاط محدد.
+        </div>
+    </div>
+    
+    <div style="background: #f8f9fa; padding: 15px; border-radius: 10px; border: 1px solid #e0e0e0;">
+        <strong>🔍 كيف تبحث؟</strong>
+        <p>اكتب اسم النشاط مباشرة، مثال:</p>
+        <div class="choice-btn" onclick="sendMessage('هل نشاط الغزل والنسيج وارد بالقطاع ${sector}')">
+            هل نشاط الغزل والنسيج وارد بالقطاع ${sector}؟
+        </div>
+        <div class="choice-btn" onclick="sendMessage('هل نشاط البرمجيات وارد بالقطاع ${sector}')">
+            هل نشاط البرمجيات وارد بالقطاع ${sector}؟
+        </div>
+    </div>
+    `;
+}
+// ==================== 🆕 نهاية دوال الأزرار الذكية ====================
+// ==================== 🆕 دوال الأزرار الذكية للبحث - نهاية ====================
+
+    function removeTypingIndicator(id) {
+        const el = document.getElementById(id);
+        if (el) el.remove();
+    }
+
+    function escapeHtml(text) {
+        return text
+            .replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;")
+            .replace(/"/g, "&quot;")
+            .replace(/'/g, "&#039;");
+    }
+
+// ==================== 🆕 دوال عرض الشروط الخاصة والعامة للقطاع ب ====================
+
+/**
+ * دالة فحص ما إذا كان يجب عرض الشروط العامة للقطاع ب
+ * @param {string} mainSector - اسم القطاع الرئيسي
+ * @returns {boolean}
+ */
+function shouldShowGeneralConditions(mainSector) {
+    const applicableSectors = [
+        "السياحة",
+        "الاتصالات وتكنولوجيا المعلومات",
+        "البترول والثروات الطبيعية",
+        "الزراعة والإنتاج الحيواني الداجني والسمكي",
+        "النقل"
+    ];
+    
+    return applicableSectors.includes(mainSector);
+}
+
+/**
+ * دالة تنسيق عرض الشروط الخاصة بنشاط النقل الجماعي (المدن الجديدة) في القطاع ب
+ * @returns {string} HTML
+ */
+function formatTransportSpecialConditions() {
+    // جلب البيانات من decision104.js (ستجلب الضوابط الـ 8 الجديدة)
+    const conditions = window.decision104?.transportSpecialConditions;
+    
+    if (!conditions) {
+        return ''; // إذا لم تكن البيانات متوفرة، لا نعرض شيئاً
+    }
+    
+    let html = `
+        <div style="margin-bottom: 20px;">
+            <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 12px;">
+                <div style="background: #e67e22; width: 24px; height: 24px; border-radius: 50%; display: flex; align-items: center; justify-content: center;">
+                    <i class="fas fa-bus" style="color: white; font-size: 11px;"></i>
+                </div>
+                <div style="color: #d35400; font-size: 1.1rem; font-weight: 700;">
+                    🚌 ضوابط خاصة: النقل الجماعي (المدن الجديدة)
+                </div>
+            </div>
+            
+            <div style="background: #fff5eb; padding: 16px; border-radius: 12px; border-right: 4px solid #e67e22; color: #a04000; line-height: 1.7; margin-bottom: 12px;">
+                <div style="font-weight: 600; margin-bottom: 10px;">
+                    ${conditions.title}
+                </div>
+                <ul style="margin: 10px 0; padding-right: 20px; list-style-type: none;">
+    `;
+    
+    // إضافة الشروط الخاصة (الـ 8 ضوابط التي حددتها)
+    conditions.conditions.forEach((condition, index) => {
+        html += `
+                    <li style="margin-bottom: 8px; position: relative; padding-right: 25px;">
+                        <span style="position: absolute; right: 0; color: #e67e22; font-weight: bold;">${index + 1}.</span>
+                        ${condition.text}
+                    </li>
+        `;
+    });
+    
+    html += `
+                </ul>
+            </div>
+        </div>
+    `;
+    
+    return html;
+}
+
+window.toggleExpandChat = function() {
+    const container = document.getElementById('gptChatContainer');
+    const expandBtn = document.getElementById('gptExpandBtn');
+    const icon = expandBtn.querySelector('i');
+    
+    // تبديل فئة التوسيع
+    container.classList.toggle('expanded');
+    
+    // تغيير الأيقونة بناءً على الحالة
+    if (container.classList.contains('expanded')) {
+        icon.classList.replace('fa-expand-alt', 'fa-compress-alt');
+        expandBtn.title = "تصغير النافذة";
+    } else {
+        icon.classList.replace('fa-compress-alt', 'fa-expand-alt');
+        expandBtn.title = "توسيع النافذة";
+    }
+    
+    // تركيز تلقائي على حقل الإدخال بعد التوسيع
+    setTimeout(() => {
+        document.getElementById('gptInput').focus();
+    }, 400);
+};
 // التصدير للنطاق العالمي لضمان إمكانية الاستدعاء من gpt_agent.js
 window.formatSingleActivityInDecision104WithIncentives = formatSingleActivityInDecision104WithIncentives;
 window.formatSectorIncentivesEnhanced = formatSectorIncentivesEnhanced;
@@ -1815,4 +2326,5 @@ window.formatSectorARegionsDetailed = formatSectorARegionsDetailed;
 window.formatSectorBRegions = formatSectorBRegions;
 window.formatSectorIncentives = formatSectorIncentives;
 window.formatSectorActivities = formatSectorActivities;
+
 
