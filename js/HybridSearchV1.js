@@ -222,7 +222,9 @@ class HybridSearchEngine {
         vectorResults.forEach((res, index) => {
             const rrfScore = 1.0 / (k + index + 1);
             scores.set(res.id, { 
-                score: rrfScore, 
+                rrfScore: rrfScore,
+                cosineScore: res.score,  // ← حفظ cosine similarity الأصلية
+                score: rrfScore,         // للترتيب
                 data: res.data, 
                 source: 'vector' 
             });
@@ -231,10 +233,14 @@ class HybridSearchEngine {
         keywordResults.forEach((res, index) => {
             const rrfScore = 1.0 / (k + index + 1);
             if (scores.has(res.id)) {
-                scores.get(res.id).score += rrfScore;
-                scores.get(res.id).source = 'hybrid';
+                const existing = scores.get(res.id);
+                existing.score += rrfScore;
+                existing.rrfScore += rrfScore;
+                existing.source = 'hybrid';
             } else {
                 scores.set(res.id, { 
+                    rrfScore: rrfScore,
+                    cosineScore: 0,  // من keyword فقط
                     score: rrfScore, 
                     data: res.data, 
                     source: 'keyword' 
@@ -355,13 +361,14 @@ class HybridSearchEngine {
         const topScore = finalResults.length > 0 ? finalResults[0].score : 0;
         
         console.log(`✅ Found ${finalResults.length} results (from ${allResults.length})`);
-        if (finalResults.length > 0) {
+         if (finalResults.length > 0) {
             const top = finalResults[0];
-            console.log(`🏆 ${top.id} (${Math.round(top.score * 100)}%) [${top.dbName}]`);
+            console.log(`🏆 ${top.id} - Cosine: ${Math.round((top.cosineScore || 0) * 100)}% | RRF: ${Math.round(top.score * 100)}% [${top.dbName}]`);
         }
         
         // جراحة: استخراج درجة التشابه الأصلية (Cosine) للنتيجة الأولى بدلاً من الرقم الثابت
-        const topVectorScore = finalResults[0]?.data?.score || 0;
+        // استخراج Cosine Similarity الحقيقية من النتيجة الأولى
+        const topCosineScore = finalResults[0]?.cosineScore || 0;
 
         return {
             query: query,
@@ -369,13 +376,14 @@ class HybridSearchEngine {
             resultsCount: finalResults.length,
             results: finalResults,
             topMatch: finalResults[0] || null,
-            // نرسل القيمة الحقيقية للتشابه لنسمح لـ gpt_agent باتخاذ قرار ذكي
-            confidence: topVectorScore 
+            // إرسال Cosine Similarity الحقيقية (ليس RRF)
+            confidence: topCosineScore 
         };
     }
 }
 
 export const hybridEngine = new HybridSearchEngine();
+
 
 
 
