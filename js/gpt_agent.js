@@ -3515,7 +3515,10 @@ window.AgentMemory = AgentMemory;
 window.checkDecision104Full = window.checkDecision104Full;
 window.formatSingleActivityInDecision104WithIncentives = formatSingleActivityInDecision104WithIncentives;
 window.formatSectorIncentivesEnhanced = formatSectorIncentivesEnhanced;
-window.formatActivityNotFoundInDecision104 = formatActivityNotFoundInDecision104;    
+window.formatActivityNotFoundInDecision104 = formatActivityNotFoundInDecision104; 
+// جراحة: إضافة الربط العالمي للدوال المتبقية
+window.handleDecision104Query = handleDecision104Query;
+window.formatMultipleActivitiesInDecision104WithBothSectorsFixed = formatMultipleActivitiesInDecision104WithBothSectorsFixed;    
     
 
 // ==================== 🆕 تصدير دوال الأزرار الذكية ====================
@@ -3537,6 +3540,7 @@ console.log('✅ GPT Agent v9.0 - Core initialized!');
     console.log('🆕 Mobile Optimized: ENABLED 📱');
     console.log('🆕 Fullscreen Expand: ENABLED 🖥️');
 }
+
 
 
 
