@@ -177,17 +177,12 @@ class HybridSearchEngine {
         // Detect follow-up question (short, pronoun, etc.)
         const isFollowUp = /^(ما|هي|هو|كم|اين|فين|شروط|حوافز|تراخيص|قرار|ده|دي)/i.test(query.trim());
         
-        if (isFollowUp && context && context.data) {
-    const contextName = context.data.text || context.data.name || "";
-    // جراحة: لا تحقن السياق إذا كان السؤال الجديد يحتوي على كلمات مفتاحية قوية تدل على موضوع مختلف
-    const hasNewSubject = /(برامج|كمبيوتر|برمجيات|نظم|معلومات)/.test(query);
-    if (!hasNewSubject) {
-        enhancedQuery = `${query} لـ ${contextName}`;
-        console.log("🧠 Context Injection Applied:", enhancedQuery);
-    } else {
-        console.log("🧠 Context Injection Skipped: New subject detected");
-    }
-}
+         if (isFollowUp && context && context.data) {
+            const contextName = context.data.text || context.data.name || "";
+            // جراحة: نرسل الاستعلامين منفصلين للموديل ليقوم هو بالربط الدلالي بدلاً من الدمج النصي المشوه
+            enhancedQuery = `query: ${query} context: ${contextName}`; 
+            console.log("🧠 Semantic Context Linking:", enhancedQuery);
+        }
         return enhancedQuery;
     }
 
@@ -378,5 +373,6 @@ class HybridSearchEngine {
 }
 
 export const hybridEngine = new HybridSearchEngine();
+
 
 
