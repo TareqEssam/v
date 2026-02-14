@@ -1563,7 +1563,8 @@ async function processUserQuery(query) {
 
     // ب. [التوجيه الدلالي الذكي] تنفيذ بناءً على النية المصنفة
     if (vectorMatch && vectorConfidence > 0.65) {
-        const searchTerm = vectorMatch.id; // استخدام المعرف المقطّر دلالياً
+        const searchTerm = vectorMatch.data?.text || query;
+
         
         switch (vectorTargetDB) {
             case 'decision104':
@@ -3510,6 +3511,7 @@ console.log('✅ GPT Agent v9.0 - Core initialized!');
     console.log('🆕 Mobile Optimized: ENABLED 📱');
     console.log('🆕 Fullscreen Expand: ENABLED 🖥️');
 }
+
 
 
 
