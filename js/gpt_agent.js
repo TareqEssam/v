@@ -1510,9 +1510,10 @@ async function processUserQuery(query) {
         
         if (searchResponse && searchResponse.topMatch) {
             vectorMatch = searchResponse.topMatch; 
-            vectorTargetDB = searchResponse.intent;
+            // جراحة: استخلاص القاعدة من بيانات النتيجة مباشرة لضمان عدم الضياع
+            vectorTargetDB = searchResponse.topMatch.dbName || searchResponse.intent;
             vectorConfidence = searchResponse.confidence;
-            console.log(`✨ القرار الدلالي: القاعدة [${vectorTargetDB}] | المعرف [${vectorMatch.id}] | الثقة [${Math.round(vectorConfidence * 100)}%]`);
+            console.log(`✨ القرار الدلالي: القاعدة [${vectorTargetDB}] | المعرف [${vectorMatch.id}]`);
         }
     } catch (e) {
         console.error("⚠️ فشل الموجه الدلالي، الاعتماد على التحليل النصي فقط:", e);
@@ -3526,6 +3527,7 @@ console.log('✅ GPT Agent v9.0 - Core initialized!');
     console.log('🆕 Mobile Optimized: ENABLED 📱');
     console.log('🆕 Fullscreen Expand: ENABLED 🖥️');
 }
+
 
 
 
