@@ -308,7 +308,80 @@ function deduplicateResults(results) {
  * ═══════════════════════════════════════════════════════════════════════
  */
 
-function handleDecision104Query(query, questionType) {
+/**
+ * استرجاع نشاط مباشر من قاعدة البيانات باستخدام المعرّف
+ * @param {string} activityId - معرّف النشاط من المتجهات (مثل: decision104_0106)
+ * @returns {Object|null} - بيانات النشاط أو null
+ */
+function findActivityByVectorId(activityId) {
+    if (!activityId || !activityId.startsWith('decision104_')) {
+        console.log("⚠️ معرّف غير صالح:", activityId);
+        return null;
+    }
+    
+    // البحث في القطاع أ
+    for (const [mainSector, subSectors] of Object.entries(window.sectorAData)) {
+        for (const [subSector, activities] of Object.entries(subSectors)) {
+            for (const activity of activities) {
+                // محاولة المطابقة بطرق مختلفة
+                const normalizedActivity = normalizeArabic(activity);
+                const searchKey = `decision104_${normalizedActivity}`;
+                
+                if (searchKey === activityId || activityId.includes(normalizedActivity)) {
+                    return {
+                        activity: activity,
+                        mainSector: mainSector,
+                        subSector: subSector,
+                        sector: 'A'
+                    };
+                }
+            }
+        }
+    }
+    
+    // البحث في القطاع ب
+    for (const [mainSector, subSectors] of Object.entries(window.sectorBData)) {
+        for (const [subSector, activities] of Object.entries(subSectors)) {
+            for (const activity of activities) {
+                const normalizedActivity = normalizeArabic(activity);
+                const searchKey = `decision104_${normalizedActivity}`;
+                
+                if (searchKey === activityId || activityId.includes(normalizedActivity)) {
+                    return {
+                        activity: activity,
+                        mainSector: mainSector,
+                        subSector: subSector,
+                        sector: 'B'
+                    };
+                }
+            }
+        }
+    }
+    
+    console.log("❌ لم يتم العثور على النشاط بالمعرّف:", activityId);
+    return null;
+}
+
+function handleDecision104Query(query, questionType, vectorHint = null) {
+    // في بداية الدالة، أضف هذا الكود:
+    
+    // ✅ محاولة الاسترجاع المباشر من التلميح المتجهي
+    if (vectorHint && vectorHint.confidence > 0.70 && vectorHint.data) {
+        console.log(`🎯 [Vector Hint] استخدام البيانات المتجهية (ثقة: ${Math.round(vectorHint.confidence * 100)}%)`);
+        
+        const itemData = vectorHint.data.original_data;
+        if (itemData && itemData.activity && itemData.sector) {
+            console.log(`✨ [Vector Hint] استرجاع مباشر: "${itemData.activity}"`);
+            
+            AgentMemory.setDecisionActivity(itemData, query);
+            
+            return formatSingleActivityInDecision104WithIncentives(
+                query,
+                itemData,
+                'both'
+            );
+        }
+    }
     // 1. تنظيف النص وتوحيد المسافات ومعالجة الخطأ الإملائي
     let q = normalizeArabic(query).replace(/القطا\s+ع/g, 'القطاع').replace(/\s+/g, ' ').trim();
     
@@ -482,29 +555,37 @@ if (q.includes('شروط') && q.includes('ب')) {
 
     // إذا وجدنا كلمات جوهرية، نقوم بفلترة النتائج
     // جراحة دقيقة للمنطق - داخل دالة handleDecision104Query
-    if (significantTerms.length > 0 && results.length > 0) {
-        const strictResults = results.filter(r => {
-            const itemText = normalizeArabic(r.item.activity);
-            
-            // حساب عدد الكلمات الجوهرية الموجودة فعلياً في اسم النشاط
-            const matchedTermsCount = significantTerms.filter(term => itemText.includes(term)).length;
-            
-            // حساب نسبة التطابق (Density)
-            const matchPercentage = (matchedTermsCount / significantTerms.length);
-            
-            // إذا كان البحث من عدة كلمات، لا نقبل إلا تطابق 70% أو أكثر
-            // (نقل + جماعي) = 2 كلمة. النقل المبرد يطابق 1 فقط (50%) -> يُحذف.
-            // (نقل + جماعي) = 2 كلمة. النقل الجماعي يطابق 2 (100%) -> يظهر.
-            return matchPercentage >= 0.7;
-        });
-
-        if (strictResults.length > 0) {
-            console.log(`🧹 [Smart Filter] تم تقليص النتائج من ${results.length} إلى ${strictResults.length} نتيجة دقيقة.`);
-            results = strictResults;
-        } else {
-            console.log("⚠️ [Smart Filter] لم نجد نشاطاً يطابق أغلب الكلمات الجوهرية، تم الحفاظ على النتائج الأصلية.");
-        }
+    // 🚀 الخطوة 8: فلترة الكلمات الجوهرية (Smart Keyword Filter) - محسّن
+if (significantTerms.length > 0 && results.length > 0) {
+    
+    // حساب نسبة الثقة من المتجهات (إن وجدت)
+    const vectorConfidence = options.vectorConfidence || 0;
+    
+    // تحديد عتبة ديناميكية بناءً على الثقة المتجهية
+    let matchThreshold = 0.7; // العتبة الافتراضية
+    
+    if (vectorConfidence > 0.75) {
+        matchThreshold = 0.5; // تخفيف الشروط للثقة العالية
+        console.log(`🧠 [Smart Filter] ثقة متجهية عالية (${Math.round(vectorConfidence * 100)}%), عتبة مخففة: 50%`);
+    } else if (vectorConfidence > 0.65) {
+        matchThreshold = 0.6; // تخفيف متوسط
+        console.log(`🧠 [Smart Filter] ثقة متجهية متوسطة (${Math.round(vectorConfidence * 100)}%), عتبة: 60%`);
     }
+    
+    const strictResults = results.filter(r => {
+        const itemText = normalizeArabic(r.item.activity);
+        const matchedTermsCount = significantTerms.filter(term => itemText.includes(term)).length;
+        const matchPercentage = (matchedTermsCount / significantTerms.length);
+        return matchPercentage >= matchThreshold;
+    });
+
+    if (strictResults.length > 0) {
+        console.log(`🧹 [Smart Filter] تم تقليص النتائج من ${results.length} إلى ${strictResults.length} نتيجة دقيقة.`);
+        results = strictResults;
+    } else {
+        console.log("⚠️ [Smart Filter] لم نجد نشاطاً يطابق أغلب الكلمات الجوهرية، تم الحفاظ على النتائج الأصلية.");
+    }
+}
 
     // ═══════════════════════════════════════════════════════════
     // الخطوة 9: تقليل الضوضاء وترتيب النتائج (Noise Suppression)
@@ -1719,4 +1800,5 @@ function renderSingleMainSector(sector, mainSectorName) {
     
     html += `</div>`;
     return html;
+
 }
