@@ -1505,7 +1505,8 @@ async function processUserQuery(query) {
         
         if (searchResponse && searchResponse.topMatch) {
             vectorMatch = searchResponse.topMatch; 
-            vectorTargetDB = searchResponse.intent;
+            // Backward compatible: handle both old and new HybridSearchV1.js versions
+            vectorTargetDB = searchResponse.intent || searchResponse.targetDatabases?.[0] || vectorMatch.source || 'activities';
             vectorConfidence = searchResponse.confidence;
             console.log(`✨ القرار الدلالي: القاعدة [${vectorTargetDB}] | المعرف [${vectorMatch.id}] | الثقة [${Math.round(vectorConfidence * 100)}%]`);
         }
@@ -3527,11 +3528,3 @@ console.log('✅ GPT Agent v9.0 - Core initialized!');
     console.log('🆕 Mobile Optimized: ENABLED 📱');
     console.log('🆕 Fullscreen Expand: ENABLED 🖥️');
 }
-
-
-
-
-
-
-
-
