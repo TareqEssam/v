@@ -1570,7 +1570,7 @@ async function processUserQuery(query) {
         } else if (vectorTargetDB === 'decision104') {
              return handleDecision104Query(vectorMatch.id, questionType);
         }
-    }
+   
 
      // ب. [التوجيه الدلالي الذكي] تنفيذ بناءً على النية المصنفة
                 if (vectorMatch && vectorConfidence > 0.65) {
@@ -3535,6 +3535,7 @@ console.log('✅ GPT Agent v9.0 - Core initialized!');
     console.log('🆕 Mobile Optimized: ENABLED 📱');
     console.log('🆕 Fullscreen Expand: ENABLED 🖥️');
 }
+
 
 
 
