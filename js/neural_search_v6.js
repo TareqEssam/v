@@ -584,7 +584,12 @@ function normalizeIndustrialZone(zone) {
 // ==================== 🔄 تحويل بيانات القرار 104 (نسخة احترافية محدثة) ====================
 function normalizeDecision104(item) {
     // استخراج البيانات بمرونة عالية (Fallback Strategy)
-    const activity = item.activity || item.النشاط || (item.data && item.data.activity) || '';
+    let activity = item.activity || item.النشاط || (item.data && item.data.activity) || '';
+
+// منطق جراحي: إذا كان النص يبدأ بمواد قانونية أو أقواس، ابحث عن مسمى بديل في الحقول الأخرى
+if (activity.trim().startsWith('(') || activity.includes('بموجب نص المادة')) {
+    activity = item.mainSector || item.subSector || activity;
+}
     const sector = item.sector || item.القطاع || item.قطاع || (item.data && item.data.sector) || '';
     const mainSector = item.mainSector || item.القطاع_الرئيسي || item.category || item.الفئة || (item.data && item.data.mainSector) || '';
     const subSector = item.subSector || item.القطاع_الفرعي || (item.data && item.data.subSector) || '';
@@ -817,10 +822,10 @@ function NeuralSearch(query, database, options = {}) {
 
     // [تعديل مرن] حذف التشتت فقط إذا كانت النتائج كثيرة جداً مع الحفاظ على أفضل 5 نتائج دائماً
     if (finalResults.length > 5 && finalResults[0].finalScore > 900) {
-        const topScore = finalResults[0].finalScore;
-        // سنسمح بهامش أوسع (20% بدلاً من 40%) وسنضمن بقاء أول 5 نتائج دائماً لإعطاء خيارات للمستخدم
-        finalResults = finalResults.filter((r, index) => index < 5 || (r.finalScore / topScore) > 0.2); 
-    }
+    const topScore = finalResults[0].finalScore;
+    // تم رفع النسبة للسماح بظهور نتائج القطاعات الأخرى حتى لو كان سكورها أقل دلالياً
+    finalResults = finalResults.filter((r, index) => index < 8 || (r.finalScore / topScore) > 0.1); 
+}
     
     // 4️⃣ اقتراح ذكي عند عدم وجود نتائج
     let suggestion = null;
@@ -1390,4 +1395,5 @@ window.IntelligentCache = IntelligentCache;
 window.ContextManager = ContextManager;
 window.detectDatabaseType = detectDatabaseType;
 window.normalizeIndustrialZone = normalizeIndustrialZone;
+
 window.normalizeDecision104 = normalizeDecision104;
