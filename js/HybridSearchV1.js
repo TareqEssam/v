@@ -360,19 +360,23 @@ class HybridSearchEngine {
             console.log(`🏆 ${top.id} (${Math.round(top.score * 100)}%) [${top.dbName}]`);
         }
         
+        // جراحة: استخراج درجة التشابه الأصلية (Cosine) للنتيجة الأولى بدلاً من الرقم الثابت
+        const topVectorScore = finalResults[0]?.data?.score || 0;
+
         return {
             query: query,
-            intent: targetDatabases[0], // إصلاح الـ undefined
+            intent: finalResults[0]?.dbName || targetDatabases[0],
             resultsCount: finalResults.length,
             results: finalResults,
             topMatch: finalResults[0] || null,
-            // جراحة: إذا كان الاعتماد دلالياً، نرسل قيمة تعبر عن نجاح الاسترجاع
-            confidence: finalResults.length > 0 ? 0.95 : 0 
+            // نرسل القيمة الحقيقية للتشابه لنسمح لـ gpt_agent باتخاذ قرار ذكي
+            confidence: topVectorScore 
         };
     }
 }
 
 export const hybridEngine = new HybridSearchEngine();
+
 
 
 
