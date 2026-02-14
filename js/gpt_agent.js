@@ -1556,19 +1556,38 @@ async function processUserQuery(query) {
     // جراحة: لا تنفذ فوراً إلا إذا كانت الثقة الدلالية حقيقية (ليست ناتجة عن RRF فقط)
     // وإذا كان المعرف يبدأ بـ decision104، نتأكد من إرساله للمحرك المتخصص دون "تنظيف"
     if (vectorMatch && (vectorConfidence > 0.85 || vectorMatch.id.includes('decision104'))) {
-        console.log("🎯 توجيه دقيق للمحرك المتخصص بالمعرف:", vectorMatch.id);
+        console.log("🎯 استخراج مباشر من قاعدة البيانات بالمعرف:", vectorMatch.id);
         
         if (vectorTargetDB === 'decision104') {
-             // إرسال المعرف الخام دون السماح للمحركات الأخرى بتشويهه
-             return handleDecision104Query(vectorMatch.id, questionType);
-        }
+             // استخراج البيانات مباشرة من قاعدة البيانات
+             const activity = window.unifiedDecision104DB?.find(item => item.id === vectorMatch.id);
+             
+             if (activity) {
+                 console.log(`✅ تم العثور على النشاط: ${activity.name}`);
+                 
+                 // عرض النتيجة مباشرة
+                 displayDecision104Result([activity], query);
+                 
+                 // حفظ في الذاكرة
+                 window.chatMemory = window.chatMemory || [];
+                 window.chatMemory.push({
+                     type: 'decision_activity',
+                     name: activity.name,
+                     sector: activity.sector || 'غير محدد'
+                 });
+                 
+                 return; // إيقاف المعالجة
+             } else {
+                 console.warn(`⚠️ لم يتم العثور على المعرف ${vectorMatch.id} في قاعدة البيانات - استخدام البحث النصي`);
+                 // الاستمرار للبحث النصي كخطة بديلة
+                 return handleDecision104Query(query, questionType);
+             }
+        } else if (vectorTargetDB === 'activities') {
             const act = masterActivityDB.find(a => a.value === vectorMatch.id);
             if (act) { await AgentMemory.setActivity(act, query); return formatActivityResponse(act, questionType); }
         } else if (vectorTargetDB === 'areas') {
             const area = industrialAreasData.find(a => a.name === vectorMatch.id);
             if (area) { await AgentMemory.setIndustrial(area, query); return formatIndustrialResponse(area); }
-        } else if (vectorTargetDB === 'decision104') {
-             return handleDecision104Query(vectorMatch.id, questionType);
         }
    
 
@@ -3535,6 +3554,7 @@ console.log('✅ GPT Agent v9.0 - Core initialized!');
     console.log('🆕 Mobile Optimized: ENABLED 📱');
     console.log('🆕 Fullscreen Expand: ENABLED 🖥️');
 }
+
 
 
 
