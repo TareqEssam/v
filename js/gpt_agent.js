@@ -1560,7 +1560,8 @@ async function processUserQuery(query) {
         
         if (vectorTargetDB === 'decision104') {
              // استخراج البيانات مباشرة من قاعدة البيانات
-             const activity = window.unifiedDecision104DB?.find(item => item.id === vectorMatch.id);
+             const activity = unifiedSearchDB?.find(item => item.id === vectorMatch.id);
+
              
              if (activity) {
                  console.log(`✅ تم العثور على النشاط: ${activity.name}`);
@@ -3555,6 +3556,7 @@ console.log('✅ GPT Agent v9.0 - Core initialized!');
     console.log('🆕 Mobile Optimized: ENABLED 📱');
     console.log('🆕 Fullscreen Expand: ENABLED 🖥️');
 }
+
 
 
 
