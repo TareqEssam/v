@@ -1723,49 +1723,68 @@ function renderSingleMainSector(sector, mainSectorName) {
 }
 
 // ====================================================================================
-// القسم: دوال التنسيق الجمالي لنتائج القرار 104 (UI Formatters)
-// تم إضافتها لحل خطأ ReferenceError وضمان عرض احترافي للحوافز
+// القسم النهائي: دوال العرض الجمالي الذكي (UI Presentation Layer)
+// تم وضعها هنا لضمان استقلالية موديول القرار 104 وقدرته على تنسيق ردوده ذاتياً
 // ====================================================================================
 
 /**
- * 🎨 دالة تنسيق عرض نشاط واحد من القرار 104 مع الحوافز
+ * 🎨 دالة تنسيق احترافية (V4.2) - تعالج مشكلة الأسماء المبهمة في قاعدة البيانات
  */
 function formatSingleActivityInDecision104WithIncentives(activityName, itemData, searchScope) {
-    const sector = itemData.sector || 'A';
-    const sectorName = (sector === 'A' || sector === 'أ') ? 'القطاع أ' : 'القطاع ب';
-    const sectorColor = (sector === 'A' || sector === 'أ') ? '#4caf50' : '#2196f3';
+    const sector = itemData.sector || 'B';
+    const isSectorA = (sector === 'A' || sector === 'أ');
+    const sectorLabel = isSectorA ? 'القطاع (أ)' : 'القطاع (ب)';
+    const sectorColor = isSectorA ? '#4caf50' : '#2196f3';
     
+    // 🧠 منطق "العنوان الذكي":
+    // إذا كان النشاط في القاعدة مجرد نص قانوني مثل (بموجب نص المادة...) 
+    // نقوم باستبداله فوراً باسم النشاط الذي استخرجه المساعد من سؤال المستخدم
+    let mainTitle = itemData.activity;
+    let isLegalReference = mainTitle.startsWith('(') || mainTitle.includes('بموجب نص المادة');
+    
+    if (isLegalReference) {
+        mainTitle = activityName; // استخدام اسم النشاط الصريح (مثل: صناعة برامج الكمبيوتر)
+    }
+
     let html = `
-    <div class="info-card" style="background: linear-gradient(135deg, ${(sector === 'A' || sector === 'أ') ? '#e8f5e9' : '#e3f2fd'}, white); border-left: 4px solid ${sectorColor};">
-        <div class="info-card-header" style="color: ${(sector === 'A' || sector === 'أ') ? '#2e7d32' : '#1565c0'};">
-            ✅ النشاط مدرج في القرار 104 - ${sectorName}
+    <div class="info-card" style="background: linear-gradient(135deg, ${isSectorA ? '#e8f5e9' : '#e3f2fd'}, white); border-left: 6px solid ${sectorColor}; box-shadow: 0 4px 15px rgba(0,0,0,0.1);">
+        <div class="info-card-header" style="color: ${isSectorA ? '#2e7d32' : '#1565c0'}; border-bottom: 2px solid ${sectorColor}22; padding-bottom: 12px; margin-bottom: 15px; font-weight: bold;">
+            <i class="fas fa-file-signature"></i> نتيجة الفحص: النشاط مدرج بالقرار 104 لسنة 2022
         </div>
+        
         <div class="info-card-content">
-            <div class="info-row">
-                <div class="info-label">📋 النشاط:</div>
-                <div class="info-value"><strong>${itemData.activity || activityName}</strong></div>
-            </div>
-            <div class="info-row">
-                <div class="info-label">📊 القطاع:</div>
-                <div class="info-value">
-                    <span style="background: ${sectorColor}20; color: ${sectorColor}; padding: 4px 12px; border-radius: 12px; font-weight: bold;">
-                        ${sectorName}
-                    </span>
+            <div style="margin-bottom: 20px;">
+                <div style="color: #666; font-size: 0.85rem; margin-bottom: 6px; letter-spacing: 0.5px;">النشاط المستعلم عنه:</div>
+                <div style="font-size: 1.3rem; font-weight: 800; color: #1a1a1a; line-height: 1.4; padding-right: 15px; border-right: 4px solid ${sectorColor}; text-transform: capitalize;">
+                    ${mainTitle}
                 </div>
+                ${isLegalReference ? `
+                <div style="background: #f8f9fa; padding: 10px 15px; border-radius: 8px; margin-top: 12px; font-size: 0.9rem; color: #4b6584; border: 1px solid #d1d8e0; line-height: 1.5;">
+                    <i class="fas fa-balance-scale-right"></i> <b>النص الرسمي بالقرار:</b> ${itemData.activity}
+                </div>` : ''}
             </div>
-            <div class="info-row">
-                <div class="info-label">🏢 القطاع الرئيسي:</div>
-                <div class="info-value">${itemData.mainSector || 'غير محدد'}</div>
-            </div>
-            <div class="info-row">
-                <div class="info-label">📂 القطاع الفرعي:</div>
-                <div class="info-value">${itemData.subSector || 'غير محدد'}</div>
+
+            <div style="display: grid; grid-template-columns: 1fr; gap: 12px;">
+                <div style="background: white; padding: 12px 15px; border-radius: 12px; border-right: 5px solid ${sectorColor}; box-shadow: 0 2px 8px rgba(0,0,0,0.04);">
+                    <span style="color: #7f8c8d; font-size: 0.85rem;">📊 فئة الاستحقاق الضريبي:</span><br>
+                    <strong style="color: ${sectorColor}; font-size: 1.2rem;">${sectorLabel}</strong>
+                </div>
+                
+                <div style="background: white; padding: 12px 15px; border-radius: 12px; border-right: 5px solid #bdc3c7; box-shadow: 0 2px 8px rgba(0,0,0,0.04);">
+                    <span style="color: #7f8c8d; font-size: 0.85rem;">🏢 القطاع الرئيسي:</span><br>
+                    <strong style="color: #2d3436;">${itemData.mainSector || 'الصناعة'}</strong>
+                </div>
+
+                <div style="background: white; padding: 12px 15px; border-radius: 12px; border-right: 5px solid #bdc3c7; box-shadow: 0 2px 8px rgba(0,0,0,0.04);">
+                    <span style="color: #7f8c8d; font-size: 0.85rem;">📂 التبويب الفرعي بالقرار:</span><br>
+                    <strong style="color: #2d3436;">${itemData.subSector}</strong>
+                </div>
             </div>
         </div>
     </div>
     `;
     
-    // إلحاق الحوافز المالية والضريبية
+    // استدعاء دالة الحوافز
     html += formatSectorIncentivesEnhanced(sector);
     
     return html;
@@ -1779,24 +1798,27 @@ function formatSectorIncentivesEnhanced(sector) {
     const color = isSectorA ? '#4caf50' : '#2196f3';
     const percentage = isSectorA ? '50%' : '30%';
     const locationInfo = isSectorA ? 
-        'يجب ممارسة النشاط في المناطق الجغرافية الأكثر احتياجاً للتنمية (الصعيد، الحدود، سيناء، إلخ).' : 
-        'يمكن ممارسة النشاط في أي مكان داخل جمهورية مصر العربية للاستفادة من الحافز.';
+        'يشترط للاستفادة ممارسة النشاط في المناطق الجغرافية الأكثر احتياجاً للتنمية (وفقاً للخريطة الاستثمارية).' : 
+        'يمكن ممارسة النشاط في أي مكان داخل الجمهورية للاستفادة من الحوافز المقررة.';
 
     return `
-    <div class="info-card" style="margin-top: 15px; border-right: 4px solid ${color}; background: #fafafa;">
-        <div class="info-card-header" style="background: ${color}; color: white; padding: 8px 15px; border-radius: 4px;">
-            🎁 الحوافز المقررة للقطاع (${isSectorA ? 'أ' : 'ب'})
+    <div class="info-card" style="margin-top: 15px; border-right: 6px solid ${color}; background: #ffffff; box-shadow: 0 4px 12px rgba(0,0,0,0.05);">
+        <div class="info-card-header" style="background: ${color}; color: white; padding: 10px 20px; border-radius: 4px; font-weight: 600;">
+            <i class="fas fa-gift"></i> حوافز ${isSectorA ? 'القطاع (أ)' : 'القطاع (ب)'} المقررة
         </div>
         <div class="info-card-content">
-            <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 10px;">
-                <span style="font-size: 24px;">💰</span>
-                <strong style="color: ${color};">خصم ضريبي بنسبة ${percentage} من التكلفة الاستثمارية</strong>
+            <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 12px;">
+                <div style="font-size: 2rem;">💰</div>
+                <div>
+                    <div style="color: ${color}; font-weight: 800; font-size: 1.1rem;">خصم ضريبي بنسبة ${percentage}</div>
+                    <div style="color: #636e72; font-size: 0.85rem;">من التكلفة الاستثمارية للمشروع</div>
+                </div>
             </div>
-            <p style="font-size: 0.9rem; color: #444; line-height: 1.6; margin-bottom: 10px;">
-                يتمتع المشروع بخصم من صافي الأرباح الخاضعة للضريبة بنسبة <b>${percentage}</b> من التكاليف الاستثمارية، خصماً من الوعاء الضريبي لمدة أقصاها 7 سنوات.
+            <p style="font-size: 0.95rem; color: #2d3436; line-height: 1.7; margin-bottom: 15px; padding: 10px; background: #f1f2f6; border-radius: 8px;">
+                يتمتع المشروع بخصم من صافي الأرباح الخاضعة للضريبة بنسبة <b>${percentage}</b> من التكاليف الاستثمارية، خصماً من الوعاء الضريبي لمدة أقصاها 7 سنوات من تاريخ بدء التشغيل.
             </p>
-            <div style="background: ${color}10; padding: 10px; border-radius: 8px; font-size: 0.85rem; color: #333; border: 1px dashed ${color};">
-                📍 <b>نطاق الاستحقاق:</b> ${locationInfo}
+            <div style="background: ${color}11; padding: 12px; border-radius: 10px; border: 1px dashed ${color}; color: #2d3436; font-size: 0.9rem;">
+                <i class="fas fa-map-marked-alt" style="color: ${color};"></i> <b>نطاق الموقع المسموح:</b> ${locationInfo}
             </div>
         </div>
     </div>
@@ -2317,14 +2339,11 @@ window.toggleExpandChat = function() {
 // التصدير للنطاق العالمي لضمان إمكانية الاستدعاء من gpt_agent.js
 window.formatSingleActivityInDecision104WithIncentives = formatSingleActivityInDecision104WithIncentives;
 window.formatSectorIncentivesEnhanced = formatSectorIncentivesEnhanced;
-// في نهاية ملف gpt_decision104.js بعد لصق الدوال
-
-window.formatSingleActivityInDecision104WithIncentives = formatSingleActivityInDecision104WithIncentives;
-window.formatSectorIncentivesEnhanced = formatSectorIncentivesEnhanced;
 window.formatActivityNotFoundInDecision104 = formatActivityNotFoundInDecision104;
 window.formatSectorARegionsDetailed = formatSectorARegionsDetailed;
 window.formatSectorBRegions = formatSectorBRegions;
 window.formatSectorIncentives = formatSectorIncentives;
 window.formatSectorActivities = formatSectorActivities;
+
 
 
