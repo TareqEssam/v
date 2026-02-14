@@ -1636,9 +1636,9 @@ async function executeByDB(result, questionType, originalQuery) {
             return formatIndustrialResponse(area);
         }
     } else if (dbName === 'decision104') {
-        // يمكن استخدام id أو النص الأصلي
-        return handleDecision104Query(id || originalQuery, questionType);
-    }
+    // نرسل السؤال الأصلي لضمان استخراج اسم النشاط الذي كتبه المستخدم
+    return handleDecision104Query(originalQuery, questionType);
+}
     return null;
 }
 // ==================== 📝 تنسيق رسالة السياق ====================
@@ -2135,68 +2135,7 @@ function formatDependenciesCount(deps) {
         </a>`;
     }
 
-    window.checkDecision104Full = function(activityName) {
-        if (typeof window.decision104 === 'undefined' || !window.decision104.unifiedSearchDB) {
-            return null;
-        }
-        
-        const found = window.decision104.unifiedSearchDB.find(item => 
-            activityName.includes(item.activity) || item.activity.includes(activityName)
-        );
-        
-        if (found) {
-            return `<div class="decision-badge">
-                ⭐ هذا النشاط مدرج في القرار 104 لسنة 2022            </div>
-            <div class="info-card" style="background: linear-gradient(135deg, #fff9c4, #fffde7); border-left-color: #f57f17;">
-                <div class="info-card-header" style="color: #f57f17;">
-                    🎯 تفاصيل القرار 104
-                </div>
-                <div class="info-card-content" style="color: #e65100;">
-                    <div class="info-row">
-                        <div class="info-label">📊 القطاع:</div>
-                        <div class="info-value"><strong>القطاع ${found.sector}</strong></div>
-                    </div>
-                    <div class="info-row">
-                        <div class="info-label">🏢 القطاع الرئيسي:</div>
-                        <div class="info-value">${found.mainSector}</div>
-                    </div>
-                    <div class="info-row">
-                        <div class="info-label">📂 القطاع الفرعي:</div>
-                        <div class="info-value">${found.subSector}</div>
-                    </div>
-                    <div class="info-row">
-                        <div class="info-label">💰 الحوافز:</div>
-                        <div class="info-value">يتمتع بالحوافز والإعفاءات المقررة</div>
-                    </div>
-                </div>
-            </div>`;
-        }
-        
-        // 🆕 إضافة الأزرار الذكية للبحث قبل النص الإرشادي
-        const smartButtons = showSmartSearchButtons(activityName);
-        
-        return `${smartButtons}
-<div style="background: #fdf6f0; border-right: 4px solid #d97706; padding: 16px; border-radius: 12px; margin: 15px 0; font-family: sans-serif; direction: rtl;">
-    <div style="display: flex; align-items: center; margin-bottom: 8px;">
-        <span style="font-size: 20px; margin-left: 10px;">🔍</span>
-        <strong style="color: #92400e; font-size: 15px;">كما يمكنك استخدام المايك لمعرفة هل النشاط وارد بالقرار 104:</strong>
-    </div>
-    
-    <ul style="margin: 0; padding-right: 20px; color: #4b5563; font-size: 13px; line-height: 1.6;">
-        <li style="margin-bottom: 8px;">
-            <strong>للبحث الشامل:</strong> 
-            <code style="background: #fef3c7; padding: 2px 6px; border-radius: 4px; color: #b45309;">هل نشاط (اسم النشاط) وارد بالقرار 104</code>
-        </li>
-        <li>
-            <strong>للبحث في قطاع محدد:</strong> 
-            <span style="display: block; margin-top: 4px; color: #6b7280;">
-                • هل نشاط (اسم النشاط) وارد بـ <span style="color: #d97706; font-weight: bold;">القطاع أ</span><br>
-                • هل نشاط (اسم النشاط) وارد بـ <span style="color: #d97706; font-weight: bold;">القطاع ب</span>
-            </span>
-        </li>
-    </ul>
-</div>`;
-    }
+   
 
     // ==================== الوظائف المساعدة ====================
     
@@ -2674,135 +2613,7 @@ function escapeForJS(text) {
         .replace(/"/g, '&quot;')  // استبدال " بـ &quot;
         .replace(/\n/g, ' ');     // إزالة الأسطر الجديدة
 }
-// ==================== 🆕 دوال الأزرار الذكية للبحث - النسخة المُصلحة ====================
 
-/**
- * عرض الأزرار الذكية للبحث عن النشاط في القرار 104
- * النسخة المُصلحة - تحل مشكلة ظهور النص خارج الأزرار
- * @param {string} activityName - اسم النشاط المحدد
- * @returns {string} HTML الأزرار
- */
-function showSmartSearchButtons(activityName) {
-    const escapedActivity = escapeForJS(activityName);
-    
-    // كتابة HTML بطريقة مضغوطة لتجنب مشاكل التنسيق
-    return '<div class="smart-search-container">' +
-        '<div class="smart-search-header">' +
-            '<i class="fas fa-search"></i>' +
-            '<span>للبحث فى قرار مجلس الوزراء رقم  104</span>' +
-        '</div>' +
-        '<div class="smart-search-text">يمكنك البحث عن هذا النشاط بسرعة باستخدام الأزرار التالية:</div>' +
-        '<div class="smart-search-buttons">' +
-            '<div class="smart-btn smart-btn-comprehensive" onclick="window.gptAgent.smartSearch(\'' + escapedActivity + '\', \'comprehensive\')">' +
-                '<div class="smart-btn-left">' +
-                    '<div class="smart-btn-icon"><i class="fas fa-globe"></i></div>' +
-                    '<div class="smart-btn-text">هل نشاط ' + activityName + ' وارد بالقرار 104</div>' +
-                '</div>' +
-                '<i class="fas fa-arrow-left smart-btn-arrow"></i>' +
-            '</div>' +
-            '<div class="smart-btn smart-btn-sector-a" onclick="window.gptAgent.smartSearch(\'' + escapedActivity + '\', \'sectorA\')">' +
-                '<div class="smart-btn-left">' +
-                    '<div class="smart-btn-icon"><i class="fas fa-industry"></i></div>' +
-                    '<div class="smart-btn-text">هل نشاط ' + activityName + ' وارد بالقطاع أ</div>' +
-                '</div>' +
-                '<i class="fas fa-arrow-left smart-btn-arrow"></i>' +
-            '</div>' +
-            '<div class="smart-btn smart-btn-sector-b" onclick="window.gptAgent.smartSearch(\'' + escapedActivity + '\', \'sectorB\')">' +
-                '<div class="smart-btn-left">' +
-                    '<div class="smart-btn-icon"><i class="fas fa-building"></i></div>' +
-                    '<div class="smart-btn-text">هل نشاط ' + activityName + ' وارد بالقطاع ب</div>' +
-                '</div>' +
-                '<i class="fas fa-arrow-left smart-btn-arrow"></i>' +
-            '</div>' +
-        '</div>' +
-    '</div>';
-}
-
-// ═══════════════════════════════════════════════════════════════
-// FIX #2: إصلاح أزرار الحوافز - Direct Incentive Display
-// ═══════════════════════════════════════════════════════════════
-
-/**
- * عرض الحوافز مباشرة - النسخة النهائية المصححة (Fix 'bot' to 'ai')
- */
-function smartSearchFixed(activityName, searchType) {
-    console.log(`🎯 [Smart Search] النشاط: "${activityName}" - النوع: ${searchType}`);
-    
-    // الحصول على السياق الحالي
-    const context = AgentMemory.getContext();
-    let currentActivity = activityName;
-    
-    // محاولة استرجاع اسم النشاط الكامل من السياق
-    if (context && (context.type === 'activity' || context.type === 'decision_activity')) {
-        currentActivity = context.data.text || context.data.name || activityName;
-    }
-    
-    // البحث في القرار 104 حسب النوع
-    let results = [];
-    let sector = null;
-    
-    switch(searchType) {
-    case 'comprehensive':
-    // بحث شامل محسّن في كلا القطاعين
-    results = enhancedSearchInDecision104(currentActivity, null);
-    break;
-            
-       case 'sectorA':
-    // بحث محسّن في القطاع أ فقط
-    results = enhancedSearchInDecision104(currentActivity, 'A');
-    sector = 'A';
-    break;
-    
-case 'sectorB':
-    // بحث محسّن في القطاع ب فقط
-    results = enhancedSearchInDecision104(currentActivity, 'B');
-    sector = 'B';
-    break;
-    }
-    
-    // تصفية النتائج حسب القطاع إذا كان محدد
-    if (sector) {
-        results = results.filter(r => r.sector === sector || r.item.sector === sector);
-    }
-    
-    // حذف التكرار
-    results = deduplicateResults(results);
-    
-    console.log(`📊 [Smart Search] عدد النتائج: ${results.length}`);
-    
-    // عرض النتائج مباشرة
-    let responseHTML = '';
-    
-    if (!results || results.length === 0) {
-        // لم يتم العثور على النشاط
-        responseHTML = formatActivityNotFoundInDecision104(currentActivity, sector);
-    } else if (results.length === 1) {
-        // نتيجة واحدة → عرض التفاصيل والحوافز مباشرة
-        const result = results[0];
-        const itemData = result.item || result;
-        
-        responseHTML = formatSingleActivityInDecision104WithIncentives(
-            currentActivity,
-            itemData,
-            sector || 'both'
-        );
-        
-        // حفظ في الذاكرة
-        AgentMemory.setDecisionActivity(itemData, currentActivity);
-        
-    } else {
-    // عدة نتائج → عرض قائمة محسّنة للاختيار
-    responseHTML = formatEnhancedMultipleResults(
-        currentActivity,
-        results,
-        sector || 'both'
-    );
-}
-    
-    // عرض النتيجة في الواجهة
-    // ✅ التصحيح هنا: تغيير 'bot' إلى 'ai' ليطابق دالة العرض لديك
-    addMessageToUI('ai', responseHTML);
-}
 
 
 
@@ -2991,8 +2802,7 @@ window.checkDecision104Full = window.checkDecision104Full;
 
 // ==================== 🆕 تصدير دوال الأزرار الذكية ====================
 window.gptAgent = window.gptAgent || {};
-window.gptAgent.showSmartSearchButtons = showSmartSearchButtons;
-window.gptAgent.smartSearch = smartSearchFixed;
+
     
 
 // تهيئة حالة الزر عند تحميل الصفحة
@@ -3008,6 +2818,7 @@ console.log('✅ GPT Agent v9.0 - Core initialized!');
     console.log('🆕 Mobile Optimized: ENABLED 📱');
     console.log('🆕 Fullscreen Expand: ENABLED 🖥️');
 }
+
 
 
 
