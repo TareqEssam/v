@@ -2806,63 +2806,60 @@ case 'sectorB':
 
 
 /**
- * تنسيق عرض نشاط واحد مع الحوافز (نسخة جديدة)
+ * 🎨 دالة تنسيق احترافية (V4.1) تطابق مسميات القرار 104 
+ * الميزة: معالجة ذكية للأنشطة التي تشير لنصوص قانونية وإبراز القطاعات الفرعية.
  */
 function formatSingleActivityInDecision104WithIncentives(activityName, itemData, searchScope) {
-    const sector = itemData.sector;
-    const sectorName = sector === 'A' ? 'القطاع أ' : 'القطاع ب';
-    const sectorColor = sector === 'A' ? '#4caf50' : '#2196f3';
+    const sector = itemData.sector || 'A';
+    // توحيد مسمى القطاع وفقاً للقرار
+    const isSectorA = (sector === 'A' || sector === 'أ');
+    const sectorLabel = isSectorA ? 'القطاع (أ)' : 'القطاع (ب)';
+    const sectorColor = isSectorA ? '#4caf50' : '#2196f3';
     
+    // ذكاء اصطناعي: إذا كان اسم النشاط مجرد نص قانوني بين قوسين، نستخدم اسم القطاع الفرعي كعنوان
+    let displayActivity = itemData.activity;
+    if (displayActivity.startsWith('(') && itemData.subSector) {
+        displayActivity = itemData.subSector;
+    }
+
     let html = `
-    <div class="info-card" style="background: linear-gradient(135deg, ${sector === 'A' ? '#e8f5e9' : '#e3f2fd'}, white); border-left: 4px solid ${sectorColor};">
-        <div class="info-card-header" style="color: ${sector === 'A' ? '#2e7d32' : '#1565c0'};">
-            ✅ النشاط "${activityName}" موجود في القرار 104
+    <div class="info-card" style="background: linear-gradient(135deg, ${isSectorA ? '#e8f5e9' : '#e3f2fd'}, white); border-left: 5px solid ${sectorColor};">
+        <div class="info-card-header" style="color: ${isSectorA ? '#2e7d32' : '#1565c0'}; border-bottom: 1px solid ${sectorColor}33; padding-bottom: 10px; margin-bottom: 15px;">
+            <i class="fas fa-gavel"></i> طبقاً لقرار رئيس مجلس الوزراء رقم 104 لسنة 2022
         </div>
+        
         <div class="info-card-content">
-            <div class="info-row">
-                <div class="info-label">📋 النشاط:</div>
-                <div class="info-value"><strong>${itemData.activity}</strong></div>
-            </div>
-            <div class="info-row">
-                <div class="info-label">📊 القطاع:</div>
-                <div class="info-value">
-                    <span style="background: ${sectorColor}20; color: ${sectorColor}; padding: 4px 12px; border-radius: 12px; font-weight: bold;">
-                        ${sectorName}
-                    </span>
+            <div style="margin-bottom: 15px;">
+                <div style="color: #666; font-size: 0.85rem; margin-bottom: 4px;">🎯 النشاط المستهدف:</div>
+                <div style="font-size: 1.1rem; font-weight: 700; color: #2c3e50; line-height: 1.5;">
+                    ${displayActivity}
                 </div>
+                ${itemData.activity !== displayActivity ? `<div style="color: #7f8c8d; font-size: 0.85rem; margin-top: 5px; font-style: italic;">${itemData.activity}</div>` : ''}
             </div>
-            <div class="info-row">
-                <div class="info-label">🏢 القطاع الرئيسي:</div>
-                <div class="info-value">${itemData.mainSector}</div>
-            </div>
-            <div class="info-row">
-                <div class="info-label">📂 القطاع الفرعي:</div>
-                <div class="info-value">${itemData.subSector}</div>
+
+            <div style="display: grid; grid-template-columns: 1fr; gap: 10px;">
+                <div style="background: white; padding: 10px 15px; border-radius: 10px; border-right: 4px solid ${sectorColor}; box-shadow: 0 2px 5px rgba(0,0,0,0.05);">
+                    <span style="color: #666; font-size: 0.85rem;">📊 تصنيف القطاع الاستثماري:</span><br>
+                    <strong style="color: ${sectorColor}; font-size: 1.1rem;">${sectorLabel}</strong>
+                </div>
+                
+                <div style="background: white; padding: 10px 15px; border-radius: 10px; border-right: 4px solid #95a5a6; box-shadow: 0 2px 5px rgba(0,0,0,0.05);">
+                    <span style="color: #666; font-size: 0.85rem;">🏢 القطاع الرئيسي:</span><br>
+                    <strong style="color: #2c3e50;">${itemData.mainSector || 'الصناعة'}</strong>
+                </div>
+
+                ${itemData.subSector && itemData.subSector !== displayActivity ? `
+                <div style="background: white; padding: 10px 15px; border-radius: 10px; border-right: 4px solid #7f8c8d; box-shadow: 0 2px 5px rgba(0,0,0,0.05);">
+                    <span style="color: #666; font-size: 0.85rem;">📂 القطاع الفرعي:</span><br>
+                    <strong style="color: #2c3e50;">${itemData.subSector}</strong>
+                </div>` : ''}
             </div>
         </div>
     </div>
     `;
     
-    // عرض الحوافز مباشرة
-    html += formatSectorIncentivesEnhanced(sector, itemData);
-    
-    // إضافة ملاحظات خاصة إذا كان القطاع أ
-    if (sector === 'A') {
-        html += `
-        <div style="background: #fff3e0; padding: 14px; border-radius: 10px; border: 1px solid #ffe0b2; margin-top: 16px;">
-            <div style="color: #e65100; font-weight: 600; margin-bottom: 8px;">
-                <i class="fas fa-map-marker-alt"></i> 📍 المناطق المسموحة للقطاع أ
-            </div>
-            <div style="color: #bf360c; line-height: 1.6; font-size: 0.9em;">
-                يجب ممارسة هذا النشاط في المناطق المحددة فقط .
-                <br>
-                <button onclick="sendMessage('ما هي المناطق المحددة للقطاع أ')" class="choice-btn" style="margin-top: 8px; font-size: 0.85em;">
-                    🗺️ عرض المناطق المحددة بالتفصيل
-                </button>
-            </div>
-        </div>
-        `;
-    }
+    // إلحاق الحوافز والضوابط المكانية
+    html += formatSectorIncentivesEnhanced(sector);
     
     return html;
 }
@@ -3520,6 +3517,7 @@ console.log('✅ GPT Agent v9.0 - Core initialized!');
     console.log('🆕 Mobile Optimized: ENABLED 📱');
     console.log('🆕 Fullscreen Expand: ENABLED 🖥️');
 }
+
 
 
 
