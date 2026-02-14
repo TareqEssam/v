@@ -345,20 +345,32 @@ function deduplicateResults(results) {
 
 // ==================== 🎯 handleDecision104Query - النسخة الذكية ====================
 
-function handleDecision104Query(query, questionType, preFoundItem = null) {
-    // 1. إذا قام المحرك الدلالي بإيجاد نتيجة جاهزة، نعرضها فوراً دون بحث جديد
+   function handleDecision104Query(query, questionType, preFoundItem = null) {
+    // 1. إذا وُجدت نتيجة جاهزة من المحرك الدلالي
     if (preFoundItem) {
-        console.log("✅ استلام نتيجة جاهزة من المحرك الدلالي:", preFoundItem.activity);
+        // استخراج البيانات بذكاء (قد تكون داخل item أو مباشرة في الكائن)
+        const rawData = preFoundItem.item || preFoundItem;
         
-        // حفظ في الذاكرة
-        if (window.AgentMemory) {
-            AgentMemory.setDecisionActivity(preFoundItem, query);
-        }
+        // توحيد مسمى النشاط لضمان عدم ظهور undefined
+        const activityText = rawData.activity || rawData.text || rawData.id || "نشاط غير محدد";
+        const sectorValue = rawData.sector || 'B';
         
-        // عرض التنسيق الجمالي فوراً
-        return formatSingleActivityInDecision104WithIncentives(query, preFoundItem, preFoundItem.sector);
-    }
+        console.log("✅ معالجة النتيجة الجاهزة للنشاط:", activityText);
 
+        // إعادة بناء الكائن بالشكل الذي تتوقعه دالة التنسيق
+        const safeItem = {
+            activity: activityText,
+            sector: sectorValue,
+            mainSector: rawData.mainSector || '',
+            subSector: rawData.subSector || ''
+        };
+
+        if (window.AgentMemory) {
+            AgentMemory.setDecisionActivity(safeItem, query);
+        }
+
+        return formatSingleActivityInDecision104WithIncentives(query, safeItem, sectorValue);
+    }
     // 2. إذا لم توجد نتيجة جاهزة (بحث يدوي)، نتبع مسار البحث التقليدي
     let q = normalizeArabic(query).replace(/القطا\s+ع/g, 'القطاع').replace(/\s+/g, ' ').trim();
     
@@ -1454,6 +1466,18 @@ function formatSingleActivityInDecision104WithIncentives(activityName, itemData,
     const sectorLabel = isSectorA ? 'القطاع (أ)' : 'القطاع (ب)';
     const sectorColor = isSectorA ? '#4caf50' : '#2196f3';
     
+    // 🛡️ صمام الأمان: التأكد من أن النص ليس فارغاً قبل استخدام startsWith
+    let mainTitle = itemData.activity || activityName || "نشاط غير معروف";
+    let isLegalReference = false;
+    
+    if (typeof mainTitle === 'string') {
+        isLegalReference = mainTitle.startsWith('(') || mainTitle.includes('بموجب نص المادة');
+    }
+    
+    if (isLegalReference) {
+        mainTitle = activityName; 
+    }
+    
     let mainTitle = itemData.activity;
     let isLegalReference = mainTitle.startsWith('(') || mainTitle.includes('بموجب نص المادة');
     
@@ -2105,4 +2129,5 @@ window.gptAgent.smartSearch = smartSearchFixed;
 window.gptAgent.showSmartSearchButtons = showSmartSearchButtons;
 window.showSmartSearchButtons = showSmartSearchButtons; // للاستخدام المباشر
 window.smartSearchFixed = smartSearchFixed;
+
 
