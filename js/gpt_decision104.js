@@ -1806,3 +1806,13 @@ function formatSectorIncentivesEnhanced(sector) {
 // التصدير للنطاق العالمي لضمان إمكانية الاستدعاء من gpt_agent.js
 window.formatSingleActivityInDecision104WithIncentives = formatSingleActivityInDecision104WithIncentives;
 window.formatSectorIncentivesEnhanced = formatSectorIncentivesEnhanced;
+// في نهاية ملف gpt_decision104.js بعد لصق الدوال
+
+window.formatSingleActivityInDecision104WithIncentives = formatSingleActivityInDecision104WithIncentives;
+window.formatSectorIncentivesEnhanced = formatSectorIncentivesEnhanced;
+window.formatActivityNotFoundInDecision104 = formatActivityNotFoundInDecision104;
+window.formatSectorARegionsDetailed = formatSectorARegionsDetailed;
+window.formatSectorBRegions = formatSectorBRegions;
+window.formatSectorIncentives = formatSectorIncentives;
+window.formatSectorActivities = formatSectorActivities;
+
