@@ -2743,7 +2743,6 @@ window.gptGracefulClose = function() {
     }, 500);
 };
 
-// 4. الدالة المفقودة: دالة الإشعارات
 // gpt_agent.js - تحديث دالة الإشعارات الجمالية
 window.showGPTNotification = function(msg, type = 'success') {
     const container = document.getElementById('gptMessages');
@@ -2800,30 +2799,6 @@ window.handleEnter = handleEnter;
 window.AgentMemory = AgentMemory;
 window.checkDecision104Full = window.checkDecision104Full;
     
-window.toggleExpandChat = function() {
-    const container = document.getElementById('gptChatContainer');
-    const expandBtn = document.getElementById('gptExpandBtn');
-    const icon = expandBtn.querySelector('i');
-    
-    container.classList.toggle('expanded');
-    
-    if (container.classList.contains('expanded')) {
-        icon.classList.replace('fa-expand-alt', 'fa-compress-alt');
-        expandBtn.title = "تصغير النافذة";
-    } else {
-        icon.classList.replace('fa-compress-alt', 'fa-expand-alt');
-        expandBtn.title = "توسيع النافذة";
-    }
-    
-    setTimeout(() => {
-        const input = document.getElementById('gptInput');
-        if(input) input.focus();
-    }, 400);
-
-
-// سطر أمان إضافي في نهاية الملف
-console.log('✅ GPT Agent v9.0 - Refined with Context Routing');
-} // إغلاق قوس الـ else الرئيسي للملف
 // ==================== 🆕 تصدير دوال الأزرار الذكية ====================
 window.gptAgent = window.gptAgent || {};
 
@@ -2842,6 +2817,7 @@ console.log('✅ GPT Agent v9.0 - Core initialized!');
     console.log('🆕 Mobile Optimized: ENABLED 📱');
     console.log('🆕 Fullscreen Expand: ENABLED 🖥️');
 }
+
 
 
 
