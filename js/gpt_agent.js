@@ -1589,6 +1589,7 @@ async function processUserQuery(query) {
             const area = industrialAreasData.find(a => a.name === vectorMatch.id);
             if (area) { await AgentMemory.setIndustrial(area, query); return formatIndustrialResponse(area); }
         }
+ }
    
 
      // ب. [التوجيه الدلالي الذكي] تنفيذ بناءً على النية المصنفة
@@ -3554,6 +3555,7 @@ console.log('✅ GPT Agent v9.0 - Core initialized!');
     console.log('🆕 Mobile Optimized: ENABLED 📱');
     console.log('🆕 Fullscreen Expand: ENABLED 🖥️');
 }
+
 
 
 
