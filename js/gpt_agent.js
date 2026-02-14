@@ -1563,47 +1563,64 @@ async function processUserQuery(query) {
     }
 
      // ب. [التوجيه الدلالي الذكي] تنفيذ بناءً على النية المصنفة
-                if (vectorMatch && vectorConfidence > 0.65) {
-    // استخدام النص الأصلي من المتجه بدلاً من المعرّف
-    const originalText = query;
+if (vectorMatch && vectorConfidence > 0.65) {
     
     switch (vectorTargetDB) {
         case 'decision104':
-            console.log("⚖️ مسار القرار 104 المتخصص");
-            // استخدام النص الأصلي للبحث
-            const res104 = await handleDecision104Query(originalText, questionType);
-            if (res104 && !res104.includes('لم أجد معلومات')) return res104;
-            break;
+    console.log("⚖️ مسار القرار 104 المتخصص");
+    
+    // تمرير التلميح المتجهي
+    const res104 = await handleDecision104Query(
+        query, 
+        questionType,
+        {
+            confidence: vectorConfidence,
+            data: vectorMatch
+        }
+    );
+    
+    if (res104 && !res104.includes('لم أجد معلومات')) return res104;
+    break;
 
         case 'activities':
-            console.log("📋 مسار التراخيص والأنشطة");
-            // البحث بالنص الأصلي أو البيانات المحفوظة
+            console.log("📋 مسار التراخيص والأنشطة (Vector-Enhanced)");
+            
+            // ✅ FIX: استخدام البيانات المحفوظة مباشرة
             const activityData = vectorMatch.data?.original_data;
             if (activityData && activityData.value) {
+                // البحث في قاعدة البيانات الرئيسية
                 const act = masterActivityDB.find(a => a.value === activityData.value);
                 if (act) {
+                    console.log(`🎯 استرجاع نشاط مباشر: "${act.text}"`);
                     await AgentMemory.setActivity(act, query);
                     return formatActivityResponse(act, questionType);
                 }
             }
+            
             // Fallback: البحث بالنص
-            const actRes = await handleActivityQuery(originalText, questionType, null, null);
+            const originalTextAct = vectorMatch.data?.text || query;
+            const actRes = await handleActivityQuery(originalTextAct, questionType, null, null);
             if (actRes) return actRes;
             break;
 
         case 'areas':
-            console.log("🏭 مسار المناطق الجغرافية");
+            console.log("🏭 مسار المناطق الجغرافية (Vector-Enhanced)");
+            
+            // ✅ FIX: استخدام البيانات المحفوظة مباشرة
             const areaData = vectorMatch.data?.original_data;
             if (areaData && areaData.name) {
                 const area = industrialAreasData.find(a => a.name === areaData.name);
                 if (area) {
+                    console.log(`🎯 استرجاع منطقة مباشرة: "${area.name}"`);
                     await AgentMemory.setIndustrial(area, query);
                     return formatIndustrialResponse(area);
                 }
             }
+            
             // Fallback: البحث بالنص
-            const resArea = await handleIndustrialQuery(originalText, questionType, analysisContext, entities);
-            if (resArea) return resArea;
+            const originalTextArea = vectorMatch.data?.text || query;
+            const areaRes = await handleIndustrialQuery(originalTextArea, questionType, null, null);
+            if (areaRes) return areaRes;
             break;
     }
 }
@@ -3528,4 +3545,5 @@ console.log('✅ GPT Agent v9.0 - Core initialized!');
     console.log('🆕 Mobile Optimized: ENABLED 📱');
     console.log('🆕 Fullscreen Expand: ENABLED 🖥️');
 }
+
 
