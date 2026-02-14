@@ -111,15 +111,17 @@ function getMatchTypeInfo(matchType, confidence) {
 }
 
 /**
- * دالة معالجة اختيار نشاط محدد من القرار 104
+ * دالة معالجة اختيار نشاط محدد من القرار 104 - النسخة الموحدة
  */
 window.selectSpecificActivityInDecision104 = async function(activityName, sector) {
     console.log("🎯 اختيار نشاط محدد:", activityName, "القطاع:", sector);
     
+    // البحث عن النشاط المحدد في القطاع المحدد
     const results = searchInDecision104EnhancedForSpecificSector(activityName, sector);
     const selectedResult = results.find(r => r.item.activity === activityName && r.item.sector === sector);
     
     if (selectedResult) {
+        // حفظ النشاط في الذاكرة باستخدام setActivity
         const activityData = {
             text: activityName,
             value: activityName,
@@ -929,64 +931,6 @@ function detectSearchScopeEnhanced(query) {
     return { scope: 'both', scopeName: 'كلا القطاعين' };
 }
 
-window.selectSpecificActivityInDecision104 = function(activityName, sector) {
-    console.log(`🚀 [Click Handler] تم اختيار النشاط: "${activityName}" - القطاع: ${sector}`);
-    
-    let itemData = null;
-    let dataSource = (sector === 'A') ? window.sectorAData : window.sectorBData;
-    
-    if (dataSource) {
-        const normalizedTarget = normalizeArabic(activityName);
-        
-        for (const [mainSector, subSectors] of Object.entries(dataSource)) {
-            for (const [subSector, activities] of Object.entries(subSectors)) {
-                const found = activities.find(act => {
-                    const normAct = normalizeArabic(act);
-                    return normAct === normalizedTarget || normAct.includes(normalizedTarget) || normalizedTarget.includes(normAct);
-                });
-                
-                if (found) {
-                    itemData = {
-                        activity: found,
-                        mainSector: mainSector,
-                        subSector: subSector,
-                        sector: sector
-                    };
-                    break;
-                }
-            }
-            if (itemData) break;
-        }
-    }
-    
-    if (!itemData) {
-        console.warn("⚠️ [Click Handler] لم يتم العثور على التفاصيل الكاملة، استخدام بيانات الطوارئ.");
-        itemData = {
-            activity: activityName,
-            mainSector: "غير محدد",
-            subSector: "غير محدد",
-            sector: sector
-        };
-    }
-    
-    console.log("✅ [Click Handler] البيانات جاهزة للعرض:", itemData);
-    addMessageToUI('user', activityName);
-    AgentMemory.setDecisionActivity(itemData, activityName);
-    
-    const responseHTML = formatSingleActivityInDecision104WithIncentives(
-        itemData.activity,
-        itemData,
-        sector
-    );
-    
-    const typingId = showTypingIndicator();
-    
-    setTimeout(() => {
-        removeTypingIndicator(typingId);
-        typeWriterResponse(responseHTML);
-    }, 500);
-};
-
 // ==================== استخراج اسم النشاط من السؤال ====================
 
 function extractActivityFromQueryEnhanced(normalizedQuery) {
@@ -1487,6 +1431,9 @@ function renderSingleMainSector(sector, mainSectorName) {
 
 // ==================== دوال العرض الجمالي الذكي (UI Presentation Layer) ====================
 
+/**
+ * 🎨 دالة تنسيق احترافية (V4.2) - تعالج مشكلة الأسماء المبهمة في قاعدة البيانات
+ */
 function formatSingleActivityInDecision104WithIncentives(activityName, itemData, searchScope) {
     const sector = itemData.sector || 'B';
     const isSectorA = (sector === 'A' || sector === 'أ');
@@ -1543,6 +1490,9 @@ function formatSingleActivityInDecision104WithIncentives(activityName, itemData,
     return html;
 }
 
+/**
+ * 💰 دالة عرض تفاصيل الحوافز المالية والضريبية بشكل جمالي
+ */
 function formatSectorIncentivesEnhanced(sector, itemData) {
     const isSectorA = (sector === 'A' || sector === 'أ');
     const sectorName = isSectorA ? 'القطاع أ' : 'القطاع ب';
@@ -1633,6 +1583,9 @@ function formatSectorIncentivesEnhanced(sector, itemData) {
     `;
 }
 
+/**
+ * تنسيق رسالة عدم العثور على النشاط - النسخة الاحترافية الشاملة
+ */
 function formatActivityNotFoundInDecision104(activityName, sector) {
     const sectorText = sector === 'A' ? 'القطاع أ' : sector === 'B' ? 'القطاع ب' : 'القرار 104';
     
@@ -1918,7 +1871,6 @@ function shouldShowGeneralConditions(mainSector) {
 }
 
 function formatSectorBGeneralConditions() {
-    // هذه دالة افتراضية، يمكن تخصيصها حسب الحاجة
     return `
     <div style="background: #e3f2fd; padding: 16px; border-radius: 12px; border-right: 4px solid #2196f3; color: #1565c0; margin-bottom: 20px; line-height: 1.6;">
         <strong>📌 الشروط العامة للقطاع ب:</strong>
