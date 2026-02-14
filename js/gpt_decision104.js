@@ -1719,4 +1719,90 @@ function renderSingleMainSector(sector, mainSectorName) {
     
     html += `</div>`;
     return html;
+
 }
+
+// ====================================================================================
+// القسم: دوال التنسيق الجمالي لنتائج القرار 104 (UI Formatters)
+// تم إضافتها لحل خطأ ReferenceError وضمان عرض احترافي للحوافز
+// ====================================================================================
+
+/**
+ * 🎨 دالة تنسيق عرض نشاط واحد من القرار 104 مع الحوافز
+ */
+function formatSingleActivityInDecision104WithIncentives(activityName, itemData, searchScope) {
+    const sector = itemData.sector || 'A';
+    const sectorName = (sector === 'A' || sector === 'أ') ? 'القطاع أ' : 'القطاع ب';
+    const sectorColor = (sector === 'A' || sector === 'أ') ? '#4caf50' : '#2196f3';
+    
+    let html = `
+    <div class="info-card" style="background: linear-gradient(135deg, ${(sector === 'A' || sector === 'أ') ? '#e8f5e9' : '#e3f2fd'}, white); border-left: 4px solid ${sectorColor};">
+        <div class="info-card-header" style="color: ${(sector === 'A' || sector === 'أ') ? '#2e7d32' : '#1565c0'};">
+            ✅ النشاط مدرج في القرار 104 - ${sectorName}
+        </div>
+        <div class="info-card-content">
+            <div class="info-row">
+                <div class="info-label">📋 النشاط:</div>
+                <div class="info-value"><strong>${itemData.activity || activityName}</strong></div>
+            </div>
+            <div class="info-row">
+                <div class="info-label">📊 القطاع:</div>
+                <div class="info-value">
+                    <span style="background: ${sectorColor}20; color: ${sectorColor}; padding: 4px 12px; border-radius: 12px; font-weight: bold;">
+                        ${sectorName}
+                    </span>
+                </div>
+            </div>
+            <div class="info-row">
+                <div class="info-label">🏢 القطاع الرئيسي:</div>
+                <div class="info-value">${itemData.mainSector || 'غير محدد'}</div>
+            </div>
+            <div class="info-row">
+                <div class="info-label">📂 القطاع الفرعي:</div>
+                <div class="info-value">${itemData.subSector || 'غير محدد'}</div>
+            </div>
+        </div>
+    </div>
+    `;
+    
+    // إلحاق الحوافز المالية والضريبية
+    html += formatSectorIncentivesEnhanced(sector);
+    
+    return html;
+}
+
+/**
+ * 💰 دالة عرض تفاصيل الحوافز المالية والضريبية بشكل جمالي
+ */
+function formatSectorIncentivesEnhanced(sector) {
+    const isSectorA = (sector === 'A' || sector === 'أ');
+    const color = isSectorA ? '#4caf50' : '#2196f3';
+    const percentage = isSectorA ? '50%' : '30%';
+    const locationInfo = isSectorA ? 
+        'يجب ممارسة النشاط في المناطق الجغرافية الأكثر احتياجاً للتنمية (الصعيد، الحدود، سيناء، إلخ).' : 
+        'يمكن ممارسة النشاط في أي مكان داخل جمهورية مصر العربية للاستفادة من الحافز.';
+
+    return `
+    <div class="info-card" style="margin-top: 15px; border-right: 4px solid ${color}; background: #fafafa;">
+        <div class="info-card-header" style="background: ${color}; color: white; padding: 8px 15px; border-radius: 4px;">
+            🎁 الحوافز المقررة للقطاع (${isSectorA ? 'أ' : 'ب'})
+        </div>
+        <div class="info-card-content">
+            <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 10px;">
+                <span style="font-size: 24px;">💰</span>
+                <strong style="color: ${color};">خصم ضريبي بنسبة ${percentage} من التكلفة الاستثمارية</strong>
+            </div>
+            <p style="font-size: 0.9rem; color: #444; line-height: 1.6; margin-bottom: 10px;">
+                يتمتع المشروع بخصم من صافي الأرباح الخاضعة للضريبة بنسبة <b>${percentage}</b> من التكاليف الاستثمارية، خصماً من الوعاء الضريبي لمدة أقصاها 7 سنوات.
+            </p>
+            <div style="background: ${color}10; padding: 10px; border-radius: 8px; font-size: 0.85rem; color: #333; border: 1px dashed ${color};">
+                📍 <b>نطاق الاستحقاق:</b> ${locationInfo}
+            </div>
+        </div>
+    </div>
+    `;
+}
+
+// التصدير للنطاق العالمي لضمان إمكانية الاستدعاء من gpt_agent.js
+window.formatSingleActivityInDecision104WithIncentives = formatSingleActivityInDecision104WithIncentives;
+window.formatSectorIncentivesEnhanced = formatSectorIncentivesEnhanced;
