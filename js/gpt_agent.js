@@ -1570,25 +1570,23 @@ async function processUserQuery(query) {
                  console.log(`✅ تم استخراج النشاط من المحرك الدلالي: ${activityName}`);
                  
                  // بناء كائن النشاط بنفس البنية المتوقعة
-                 const activityObject = {
+                 const itemData = {
                      activity: activityName,
                      mainSector: originalData.sector,
                      subSector: originalData.main_activity,
                      sector: sector
                  };
                  
-                 // عرض النتيجة مباشرة
-                 displayDecision104Result([activityObject], query);
-                 
                  // حفظ في الذاكرة
-                 window.chatMemory = window.chatMemory || [];
-                 window.chatMemory.push({
-                     type: 'decision_activity',
-                     name: activityName,
-                     sector: sector
-                 });
+                 AgentMemory.setDecisionActivity(itemData, query);
                  
-                 return; // إيقاف المعالجة
+                 // عرض النتيجة باستخدام الدالة الصحيحة
+                 return formatSingleActivityInDecision104WithIncentives(
+                     query,
+                     itemData,
+                     'both'
+                 );
+                 
              } else {
                  console.warn(`⚠️ لم يتم العثور على البيانات في vectorMatch - استخدام البحث النصي`);
                  // الاستمرار للبحث النصي كخطة بديلة
@@ -3567,6 +3565,7 @@ console.log('✅ GPT Agent v9.0 - Core initialized!');
     console.log('🆕 Mobile Optimized: ENABLED 📱');
     console.log('🆕 Fullscreen Expand: ENABLED 🖥️');
 }
+
 
 
 
