@@ -2813,22 +2813,22 @@ case 'sectorB':
 
 
 /**
- * تنسيق عرض نشاط واحد مع الحوافز (نسخة جديدة)
+ * 🎨 دالة تنسيق عرض نشاط واحد من القرار 104 مع الحوافز
  */
 function formatSingleActivityInDecision104WithIncentives(activityName, itemData, searchScope) {
-    const sector = itemData.sector;
-    const sectorName = sector === 'A' ? 'القطاع أ' : 'القطاع ب';
-    const sectorColor = sector === 'A' ? '#4caf50' : '#2196f3';
+    const sector = itemData.sector || 'A';
+    const sectorName = (sector === 'A' || sector === 'أ') ? 'القطاع أ' : 'القطاع ب';
+    const sectorColor = (sector === 'A' || sector === 'أ') ? '#4caf50' : '#2196f3';
     
     let html = `
-    <div class="info-card" style="background: linear-gradient(135deg, ${sector === 'A' ? '#e8f5e9' : '#e3f2fd'}, white); border-left: 4px solid ${sectorColor};">
-        <div class="info-card-header" style="color: ${sector === 'A' ? '#2e7d32' : '#1565c0'};">
-            ✅ النشاط "${activityName}" موجود في القرار 104
+    <div class="info-card" style="background: linear-gradient(135deg, ${(sector === 'A' || sector === 'أ') ? '#e8f5e9' : '#e3f2fd'}, white); border-left: 4px solid ${sectorColor};">
+        <div class="info-card-header" style="color: ${(sector === 'A' || sector === 'أ') ? '#2e7d32' : '#1565c0'};">
+            ✅ النشاط مدرج في القرار 104 - ${sectorName}
         </div>
         <div class="info-card-content">
             <div class="info-row">
                 <div class="info-label">📋 النشاط:</div>
-                <div class="info-value"><strong>${itemData.activity}</strong></div>
+                <div class="info-value"><strong>${itemData.activity || activityName}</strong></div>
             </div>
             <div class="info-row">
                 <div class="info-label">📊 القطاع:</div>
@@ -2840,38 +2840,52 @@ function formatSingleActivityInDecision104WithIncentives(activityName, itemData,
             </div>
             <div class="info-row">
                 <div class="info-label">🏢 القطاع الرئيسي:</div>
-                <div class="info-value">${itemData.mainSector}</div>
+                <div class="info-value">${itemData.mainSector || 'غير محدد'}</div>
             </div>
             <div class="info-row">
                 <div class="info-label">📂 القطاع الفرعي:</div>
-                <div class="info-value">${itemData.subSector}</div>
+                <div class="info-value">${itemData.subSector || 'غير محدد'}</div>
             </div>
         </div>
     </div>
     `;
     
-    // عرض الحوافز مباشرة
-    html += formatSectorIncentivesEnhanced(sector, itemData);
-    
-    // إضافة ملاحظات خاصة إذا كان القطاع أ
-    if (sector === 'A') {
-        html += `
-        <div style="background: #fff3e0; padding: 14px; border-radius: 10px; border: 1px solid #ffe0b2; margin-top: 16px;">
-            <div style="color: #e65100; font-weight: 600; margin-bottom: 8px;">
-                <i class="fas fa-map-marker-alt"></i> 📍 المناطق المسموحة للقطاع أ
-            </div>
-            <div style="color: #bf360c; line-height: 1.6; font-size: 0.9em;">
-                يجب ممارسة هذا النشاط في المناطق المحددة فقط .
-                <br>
-                <button onclick="sendMessage('ما هي المناطق المحددة للقطاع أ')" class="choice-btn" style="margin-top: 8px; font-size: 0.85em;">
-                    🗺️ عرض المناطق المحددة بالتفصيل
-                </button>
-            </div>
-        </div>
-        `;
-    }
+    // إلحاق الحوافز المالية والضريبية
+    html += formatSectorIncentivesEnhanced(sector);
     
     return html;
+}
+
+/**
+ * 💰 دالة عرض تفاصيل الحوافز المالية والضريبية بشكل جمالي
+ */
+function formatSectorIncentivesEnhanced(sector) {
+    const isSectorA = (sector === 'A' || sector === 'أ');
+    const color = isSectorA ? '#4caf50' : '#2196f3';
+    const percentage = isSectorA ? '50%' : '30%';
+    const locationInfo = isSectorA ? 
+        'يجب ممارسة النشاط في المناطق الجغرافية الأكثر احتياجاً للتنمية (الصعيد، الحدود، سيناء، إلخ).' : 
+        'يمكن ممارسة النشاط في أي مكان داخل جمهورية مصر العربية للاستفادة من الحافز.';
+
+    return `
+    <div class="info-card" style="margin-top: 15px; border-right: 4px solid ${color}; background: #fafafa;">
+        <div class="info-card-header" style="background: ${color}; color: white; padding: 8px 15px; border-radius: 4px;">
+            🎁 الحوافز المقررة للقطاع (${isSectorA ? 'أ' : 'ب'})
+        </div>
+        <div class="info-card-content">
+            <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 10px;">
+                <span style="font-size: 24px;">💰</span>
+                <strong style="color: ${color};">خصم ضريبي بنسبة ${percentage} من التكلفة الاستثمارية</strong>
+            </div>
+            <p style="font-size: 0.9rem; color: #444; line-height: 1.6; margin-bottom: 10px;">
+                يتمتع المشروع بخصم من صافي الأرباح الخاضعة للضريبة بنسبة <b>${percentage}</b> من التكاليف الاستثمارية، خصماً من الوعاء الضريبي لمدة أقصاها 7 سنوات.
+            </p>
+            <div style="background: ${color}10; padding: 10px; border-radius: 8px; font-size: 0.85rem; color: #333; border: 1px dashed ${color};">
+                📍 <b>نطاق الاستحقاق:</b> ${locationInfo}
+            </div>
+        </div>
+    </div>
+    `;
 }
 
 /**
@@ -3527,6 +3541,7 @@ console.log('✅ GPT Agent v9.0 - Core initialized!');
     console.log('🆕 Mobile Optimized: ENABLED 📱');
     console.log('🆕 Fullscreen Expand: ENABLED 🖥️');
 }
+
 
 
 
