@@ -1,10 +1,8 @@
 /****************************************************************************
- * 🧠 HybridSearchEngine V7 - PRODUCTION FINAL
+ * 🧠 HybridSearchEngine V7 - PRODUCTION FINAL (SCIENTIFIC REFACTOR)
  * 
  * ✅ CRITICAL FIX: Base64 Vector Decompression
- * 
- * Issue: Vectors in JSON are stored as Base64-encoded Float32 arrays
- * Solution: Decode Base64 → Convert to Float32Array → Extract values
+ * ✅ SCIENTIFIC UPGRADE: Context injection, strict intent routing, RRF ranking
  ****************************************************************************/
 
 import { pipeline, env } from 'https://cdn.jsdelivr.net/npm/@xenova/transformers@2.17.1';
@@ -33,21 +31,13 @@ class HybridSearchEngine {
      */
     decodeVector(base64String) {
         try {
-            // Decode base64 to binary string
             const binaryString = atob(base64String);
-            
-            // Convert binary string to Uint8Array
             const bytes = new Uint8Array(binaryString.length);
             for (let i = 0; i < binaryString.length; i++) {
                 bytes[i] = binaryString.charCodeAt(i);
             }
-            
-            // Convert Uint8Array to Float32Array
             const float32Array = new Float32Array(bytes.buffer);
-            
-            // Convert to regular array
             return Array.from(float32Array);
-            
         } catch (error) {
             console.error("Failed to decode vector:", error);
             return null;
@@ -59,7 +49,6 @@ class HybridSearchEngine {
         console.log("⏳ Initializing E5 Hybrid Search Engine...");
         
         try {
-            // Load E5 model
             this.embedder = await pipeline('feature-extraction', 'Xenova/multilingual-e5-small');
             
             const loadDatabase = async (filename) => {
@@ -81,12 +70,10 @@ class HybridSearchEngine {
 
             console.log(`✅ Loaded: activities(${activities.length}), areas(${areas.length}), decision104(${decision104.length})`);
 
-            // Verify vector decoding
             if (activities.length > 0 && activities[0].vector) {
                 console.log(`📊 Sample vector: [${activities[0].vector.slice(0, 3).map(v => v.toFixed(4)).join(', ')}...] (length: ${activities[0].vector.length})`);
             }
 
-            // Create intent signatures
             this.intentSignatures = {
                 activities: await this.embed('أنشطة صناعية تراخيص تشغيل متطلبات'),
                 areas: await this.embed('مناطق صناعية مواقع جغرافية'),
@@ -105,7 +92,6 @@ class HybridSearchEngine {
     normalizeData(jsonData) {
         let items = [];
         
-        // Extract items array
         if (jsonData.data && Array.isArray(jsonData.data)) {
             items = jsonData.data;
             console.log(`📦 Extracted ${items.length} items from 'data' property`);
@@ -117,14 +103,12 @@ class HybridSearchEngine {
             return [];
         }
         
-        // Decode vectors from Base64
         const decodedItems = [];
         let successCount = 0;
         let failCount = 0;
         
         for (const item of items) {
             if (typeof item.vector === 'string') {
-                // Vector is Base64-encoded - decode it
                 const decodedVector = this.decodeVector(item.vector);
                 if (decodedVector && decodedVector.length > 0) {
                     decodedItems.push({
@@ -137,7 +121,6 @@ class HybridSearchEngine {
                     failCount++;
                 }
             } else if (Array.isArray(item.vector)) {
-                // Vector is already an array
                 decodedItems.push(item);
                 successCount++;
             } else {
@@ -181,42 +164,89 @@ class HybridSearchEngine {
         return dot / (Math.sqrt(normA) * Math.sqrt(normB));
     }
 
-    async classifyIntent(queryVector) {
-        const scores = [];
+    /**
+     * 🧠 Context-aware query preparation
+     */
+    async prepareQuery(query) {
+        const context = window.AgentMemory ? window.AgentMemory.getContext() : null;
+        let enhancedQuery = query;
+
+        // Detect follow-up question (short, pronoun, etc.)
+        const isFollowUp = /^(ما|هي|هو|كم|اين|فين|شروط|حوافز|تراخيص|قرار|ده|دي)/i.test(query.trim());
         
+        if (isFollowUp && context && context.data) {
+            const contextName = context.data.text || context.data.name || "";
+            enhancedQuery = `${query} لـ ${contextName}`;
+            console.log("🧠 Context Injection:", enhancedQuery);
+        }
+        return enhancedQuery;
+    }
+
+    /**
+     * 🎯 Strict intent routing with keyword override
+     */
+    async classifyIntent(query, queryVector) {
+        const q = query.toLowerCase();
+        
+        // Hard keyword-based routing (domain filtering)
+        if (q.includes("محافظة") || q.includes("منطقة صناعية") || q.includes("تبعية")) return ['areas'];
+        if (q.includes("قرار 104") || q.includes("حافز") || q.includes("قطاع أ") || q.includes("قطاع ب")) return ['decision104'];
+        if (q.includes("ترخيص") || q.includes("رخصة") || q.includes("مطلوب")) return ['activities'];
+
+        // Semantic similarity with higher threshold (0.45)
+        const scores = [];
         for (const [dbName, signature] of Object.entries(this.intentSignatures)) {
             const score = this.similarity(signature, queryVector);
             scores.push({ database: dbName, confidence: score });
         }
-        
         scores.sort((a, b) => b.confidence - a.confidence);
-        
+
         console.log("📊 Intent:", scores.map(s => 
             `${s.database}: ${Math.round(s.confidence * 100)}%`
         ).join(' | '));
+
+        if (scores[0].confidence > 0.45) return [scores[0].database];
         
-        const targets = [];
-        
-        if (scores[0].confidence >= this.intentThreshold) {
-            targets.push(scores[0].database);
-        }
-        
-        for (let i = 1; i < scores.length; i++) {
-            if (scores[i].confidence >= this.multiIntentThreshold && 
-                scores[i].confidence >= scores[0].confidence * 0.75) {
-                targets.push(scores[i].database);
-            }
-        }
-        
-        if (targets.length === 0) {
-            console.log("⚠️ Low confidence - searching all");
-            return ['activities', 'decision104', 'areas'];
-        }
-        
-        console.log(`🎯 Targets: [${targets.join(', ')}]`);
-        return targets;
+        return ['activities', 'decision104', 'areas']; // Fallback
     }
 
+    /**
+     * 🔀 Reciprocal Rank Fusion (RRF) for hybrid ranking
+     */
+    rerankRRF(vectorResults, keywordResults, k = 60) {
+        const scores = new Map();
+
+        vectorResults.forEach((res, index) => {
+            const rrfScore = 1.0 / (k + index + 1);
+            scores.set(res.id, { 
+                score: rrfScore, 
+                data: res.data, 
+                source: 'vector' 
+            });
+        });
+
+        keywordResults.forEach((res, index) => {
+            const rrfScore = 1.0 / (k + index + 1);
+            if (scores.has(res.id)) {
+                scores.get(res.id).score += rrfScore;
+                scores.get(res.id).source = 'hybrid';
+            } else {
+                scores.set(res.id, { 
+                    score: rrfScore, 
+                    data: res.data, 
+                    source: 'keyword' 
+                });
+            }
+        });
+
+        return Array.from(scores.entries())
+            .map(([id, val]) => ({ id, ...val }))
+            .sort((a, b) => b.score - a.score);
+    }
+
+    /**
+     * 🔍 Vector‑only search (used as one component)
+     */
     vectorSearch(queryVector, database, topK = 15) {
         const results = [];
         
@@ -236,10 +266,12 @@ class HybridSearchEngine {
             .slice(0, topK);
     }
 
+    /**
+     * 🔤 Keyword score (used for keyword‑based ranking)
+     */
     keywordScore(query, item) {
         const queryLower = query.toLowerCase();
         
-        // Extract searchable text
         const searchableText = [
             item.text,
             item.original_data?.name_ar,
@@ -267,113 +299,73 @@ class HybridSearchEngine {
         return matches / tokens.length;
     }
 
-    hybridSearch(query, queryVector, database, topK = 15) {
-        const results = [];
-        
-        for (const item of database) {
-            if (!item.vector || !Array.isArray(item.vector)) continue;
-            
-            const vectorScore = this.similarity(queryVector, item.vector);
-            const keywordScore = this.keywordScore(query, item);
-            
-            const finalScore = (vectorScore * 0.7) + (keywordScore * 0.3);
-            
-            results.push({
-                id: item.id,
-                vectorScore: vectorScore,
-                keywordScore: keywordScore,
-                finalScore: finalScore,
-                data: item
-            });
-        }
-        
-        return results
-            .sort((a, b) => b.finalScore - a.finalScore)
-            .slice(0, topK);
-    }
-
+    /**
+     * 🚀 Main search method (scientifically refactored)
+     */
     async search(query, options = {}) {
         if (!this.isReady) await this.initialize();
         
-        const {
-            topK = 5,
-            useHybrid = true,
-            minScore = 0.15,
-            relativeThreshold = 0.70
-        } = options;
+        const { topK = 5 } = options;
         
         console.log(`\n🔍 Query: "${query}"`);
         
-        const queryVector = await this.embed(query);
-        const targetDatabases = await this.classifyIntent(queryVector);
+        const refinedQuery = await this.prepareQuery(query);
+        const queryVector = await this.embed(refinedQuery);
+        const targetDatabases = await this.classifyIntent(refinedQuery, queryVector);
         
-        const allResults = [];
+        let allResults = [];
         
         for (const dbName of targetDatabases) {
-            const database = this.databases[dbName];
-            
-            if (!database || database.length === 0) {
+            const db = this.databases[dbName];
+            if (!db || db.length === 0) {
                 console.warn(`⚠️ Empty: ${dbName}`);
                 continue;
             }
             
-            console.log(`🔎 Searching [${dbName}] (${database.length} items)...`);
+            console.log(`🔎 Searching [${dbName}] (${db.length} items)...`);
             
-            const results = useHybrid 
-                ? this.hybridSearch(query, queryVector, database, topK * 3)
-                : this.vectorSearch(queryVector, database, topK * 3);
+            // Get top 20 from vector search
+            const vectorResults = this.vectorSearch(queryVector, db, 20);
             
-            results.forEach(r => {
-                r.source = dbName;
-                allResults.push(r);
-            });
+            // Get top 20 from keyword search (score > 0)
+            const keywordResults = db
+                .map(item => ({
+                    id: item.id,
+                    score: this.keywordScore(refinedQuery, item),
+                    data: item
+                }))
+                .filter(r => r.score > 0)
+                .sort((a, b) => b.score - a.score)
+                .slice(0, 20);
+            
+            // Fuse with RRF
+            const combined = this.rerankRRF(vectorResults, keywordResults);
+            combined.forEach(r => r.dbName = dbName);
+            
+            allResults.push(...combined);
         }
         
-        const sortedResults = allResults
-            .sort((a, b) => (b.finalScore || b.score) - (a.finalScore || a.score));
+        // Final global ranking
+        const sortedResults = allResults.sort((a, b) => b.score - a.score);
+        const finalResults = sortedResults.slice(0, topK);
         
-        const topScore = sortedResults[0] ? (sortedResults[0].finalScore || sortedResults[0].score) : 0;
-        const dynamicMinScore = Math.max(minScore, topScore * relativeThreshold);
-        
-        console.log(`📊 Top: ${Math.round(topScore * 100)}%, Threshold: ${Math.round(dynamicMinScore * 100)}%`);
-        
-        const finalResults = sortedResults
-            .filter(r => (r.finalScore || r.score) >= dynamicMinScore)
-            .slice(0, topK);
+        const topScore = finalResults.length > 0 ? finalResults[0].score : 0;
         
         console.log(`✅ Found ${finalResults.length} results (from ${allResults.length})`);
-        
         if (finalResults.length > 0) {
             const top = finalResults[0];
-            console.log(`🏆 ${top.id} (${Math.round((top.finalScore || top.score) * 100)}%) [${top.source}]`);
-            if (top.vectorScore !== undefined) {
-                console.log(`   Vec: ${Math.round(top.vectorScore * 100)}%, Kwd: ${Math.round(top.keywordScore * 100)}%`);
-            }
+            console.log(`🏆 ${top.id} (${Math.round(top.score * 100)}%) [${top.dbName}]`);
         }
         
-        // Build enhanced response object
-        const response = {
+        return {
             query: query,
-            intent: targetDatabases[0] || 'activities',  // ← الإضافة المهمة
             targetDatabases: targetDatabases,
             resultsCount: finalResults.length,
             results: finalResults,
             topMatch: finalResults[0] || null,
-            confidence: finalResults[0] ? (finalResults[0].finalScore || finalResults[0].score) : 0
+            confidence: topScore
         };
-
-        // Add searchable data to topMatch for gpt_agent.js
-        if (response.topMatch && response.topMatch.data) {
-            const originalData = response.topMatch.data.original_data;
-            if (originalData) {
-                response.topMatch.originalText = response.topMatch.data.text;
-                response.topMatch.fullData = originalData;
-            }
-        }
-
-        return response;
     }
 }
 
 export const hybridEngine = new HybridSearchEngine();
-
