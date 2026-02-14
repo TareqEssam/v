@@ -525,8 +525,23 @@ if (q.includes('شروط') && q.includes('ب')) {
 
         // حذف النتائج الضعيفة جداً مقارنة بالنتيجة الأولى
         const topScore = results[0].confidence || results[0].score || 0;
-        if (topScore >= 80) {
-            results = results.filter(r => (r.confidence || r.score || 0) >= (topScore * 0.7));
+        if (results.length > 1) {
+    const topResult = results[0];
+    const topScore = topResult.confidence || topResult.score || 0;
+    
+    results = results.filter(r => {
+        const currentScore = r.confidence || r.score || 0;
+        const currentSector = r.item?.sector || r.sector;
+        const topSector = topResult.item?.sector || topResult.sector;
+        
+        // حماية: إذا كان النشاط من قطاع مختلف عن النتيجة الأولى، لا تحذفه إلا لو كان ضعيفاً جداً (أقل من 30%)
+        if (currentSector !== topSector) {
+            return currentScore >= (topScore * 0.3); 
+        }
+        // للنتائج من نفس القطاع، نطبق الفلترة العادية
+        return currentScore >= (topScore * 0.7);
+    });
+}
         } else if (topScore >= 50) {
             results = results.filter(r => (r.confidence || r.score || 0) >= 40);
         }
@@ -1210,10 +1225,8 @@ function extractActivityFromQueryEnhanced(normalizedQuery) {
     // 2. قائمة الأنماط الموحدة (تم إصلاح تكرار التعريف لإنهاء خطأ SyntaxError)
     const patternsToRemove = [
         // أ. حذف كلمات التواجد والشمول بحدود دقيقة للكلمة
-        /\b(وارد|وارده|واردة|موجود|موجوده|موجودة|مدرج|مدرجه|مدرجة|مذكور|مذكوره|مشمول|مشموله|منصوص|منصوصه)\b/gi,
-        
-        // ب. حذف كلمة نشاط لزيادة التركيز
-        /\b(نشاط|النشاط)\b/gi,
+        /(وارد|وارده|واردة|موجود|موجوده|موجودة|مدرج|مدرجه|مدرجة|مذكور|مذكوره|مشمول|مشموله|منصوص|منصوصه)/gi,
+        /\b(نشاط|النشاط|انشطه|أنشطة)\b/gi,
         
         // ج. سياق القرار والقطاعات
         /\s+(بالقرار|في القرار|داخل القرار|ضمن القرار)\s*104?/g,
@@ -1719,4 +1732,5 @@ function renderSingleMainSector(sector, mainSectorName) {
     
     html += `</div>`;
     return html;
+
 }
