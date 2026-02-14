@@ -351,15 +351,29 @@ class HybridSearchEngine {
             }
         }
         
-        return {
+        // Build enhanced response object
+        const response = {
             query: query,
+            intent: targetDatabases[0] || 'activities',  // ← الإضافة المهمة
             targetDatabases: targetDatabases,
             resultsCount: finalResults.length,
             results: finalResults,
             topMatch: finalResults[0] || null,
             confidence: finalResults[0] ? (finalResults[0].finalScore || finalResults[0].score) : 0
         };
+
+        // Add searchable data to topMatch for gpt_agent.js
+        if (response.topMatch && response.topMatch.data) {
+            const originalData = response.topMatch.data.original_data;
+            if (originalData) {
+                response.topMatch.originalText = response.topMatch.data.text;
+                response.topMatch.fullData = originalData;
+            }
+        }
+
+        return response;
     }
 }
 
 export const hybridEngine = new HybridSearchEngine();
+
