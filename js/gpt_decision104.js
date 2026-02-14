@@ -309,10 +309,24 @@ function deduplicateResults(results) {
  */
 
 function handleDecision104Query(query, questionType) {
-    // 1. تنظيف النص وتوحيد المسافات ومعالجة الخطأ الإملائي
-    let q = normalizeArabic(query).replace(/القطا\s+ع/g, 'القطاع').replace(/\s+/g, ' ').trim();
-    
     console.log("🎯 محرك القرار 104: بدء المعالجة لـ:", query);
+    
+    let targetQuery = query;
+
+    // جراحة: إذا كان المدخل معرّفاً (ID)، نستخرج نص النشاط الأصلي للبحث عنه في كلا القطاعين
+    if (typeof query === 'string' && query.startsWith('decision104_')) {
+        if (window.decision104 && window.decision104.unifiedSearchDB) {
+            const record = window.decision104.unifiedSearchDB.find(r => r.id === query);
+            if (record) {
+                console.log("🔄 تحويل المعرف دلالياً إلى نص للبحث الشامل:", record.activity);
+                targetQuery = record.activity; 
+            }
+        }
+    }
+
+    // تنظيف النص المستهدف (سواء كان سؤالاً أو نص النشاط المستخرج)
+    let q = cleanQueryForSearch(targetQuery);
+    console.log(`🧼 تنظيف الاستعلام النهائي: من [${targetQuery}] إلى [${q}]`);
 
     // 2. [أولوية مطلقة] فحص الطلبات التفاعلية (الأزرار أو القوائم)
     if (q.includes('انشط') && (q.includes('قطاع') || q.includes('القطاع'))) {
@@ -1719,4 +1733,5 @@ function renderSingleMainSector(sector, mainSectorName) {
     
     html += `</div>`;
     return html;
+
 }
