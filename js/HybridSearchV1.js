@@ -1,5 +1,12 @@
 /****************************************************************************
- * 🧠 HybridSearchEngine V4 - E5 Model + Fixed Everything
+ * 🧠 HybridSearchEngine V5 - Professional E5 Integration
+ * 
+ * Features:
+ * ✓ E5 Model with proper query/passage prefix handling
+ * ✓ Intelligent intent classification (multi-database support)
+ * ✓ Hybrid search (70% semantic + 30% keyword)
+ * ✓ Dynamic score filtering (relative to top result)
+ * ✓ Production-ready error handling
  ****************************************************************************/
 
 import { pipeline, env } from 'https://cdn.jsdelivr.net/npm/@xenova/transformers@2.17.1';
@@ -18,9 +25,9 @@ class HybridSearchEngine {
         this.intentSignatures = {};
         this.isReady = false;
         
-        // Lower thresholds for better recall
-        this.intentThreshold = 0.25;
-        this.multiIntentThreshold = 0.20;
+        // Intent classification thresholds
+        this.intentThreshold = 0.30;
+        this.multiIntentThreshold = 0.25;
     }
 
     async initialize() {
@@ -50,11 +57,11 @@ class HybridSearchEngine {
 
             console.log(`✅ Loaded: activities(${activities.length}), areas(${areas.length}), decision104(${decision104.length})`);
 
-            // Intent signatures with E5 prefix
+            // Intent signatures - use query mode for classification
             this.intentSignatures = {
-                activities: await this.embed('query: industrial activities manufacturing licenses permits'),
-                areas: await this.embed('query: geographic locations industrial zones regions'),
-                decision104: await this.embed('query: tax exemptions financial incentives decree 104')
+                activities: await this.embed('industrial activities manufacturing licenses permits regulatory requirements', false),
+                areas: await this.embed('geographic locations industrial zones land areas coordinates regions', false),
+                decision104: await this.embed('tax exemptions financial incentives investment benefits customs duties decree 104', false)
             };
 
             this.isReady = true;
@@ -82,11 +89,23 @@ class HybridSearchEngine {
         return [];
     }
 
-    async embed(text) {
+    /**
+     * Generate embedding with proper E5 prefix handling
+     * @param {string} text - Text to embed
+     * @param {boolean} isDocument - false = query mode (query:), true = document mode (passage:)
+     */
+    async embed(text, isDocument = false) {
         if (!this.embedder) throw new Error("Model not ready");
         
-        // E5 requires "query: " prefix for queries
-        const prefixedText = text.startsWith('query:') ? text : `query: ${text}`;
+        // E5 model requires different prefixes for queries vs documents
+        let prefixedText;
+        if (isDocument) {
+            // Document mode: "passage:" prefix (matches Python generation)
+            prefixedText = text.startsWith('passage:') ? text : `passage: ${text}`;
+        } else {
+            // Query mode: "query:" prefix (for user searches)
+            prefixedText = text.startsWith('query:') ? text : `query: ${text}`;
+        }
         
         const output = await this.embedder(prefixedText, { pooling: 'mean', normalize: true });
         return Array.from(output.data);
@@ -118,10 +137,12 @@ class HybridSearchEngine {
         
         const targets = [];
         
+        // Primary database
         if (scores[0].confidence >= this.intentThreshold) {
             targets.push(scores[0].database);
         }
         
+        // Secondary databases (for complex queries)
         for (let i = 1; i < scores.length; i++) {
             if (scores[i].confidence >= this.multiIntentThreshold && 
                 scores[i].confidence > scores[0].confidence * 0.75) {
@@ -129,12 +150,13 @@ class HybridSearchEngine {
             }
         }
         
+        // Fallback: search all if no strong match
         if (targets.length === 0) {
-            console.log("⚠️ Low confidence, searching all");
+            console.log("⚠️ Low confidence, searching all databases");
             return ['activities', 'areas', 'decision104'];
         }
         
-        console.log(`🎯 Targets: [${targets.join(', ')}]`);
+        console.log(`🎯 Target databases: [${targets.join(', ')}]`);
         return targets;
     }
 
@@ -159,6 +181,8 @@ class HybridSearchEngine {
 
     keywordScore(query, item) {
         const queryLower = query.toLowerCase();
+        
+        // Extract searchable text from item
         const searchableText = [
             item.name_ar,
             item.name_en,
@@ -166,10 +190,12 @@ class HybridSearchEngine {
             item.activity_name,
             item.location,
             item.area_name,
+            item.sector,
+            item.main_activity,
             item.isic_code
         ].filter(Boolean).join(' ').toLowerCase();
         
-        // Split query into tokens
+        // Tokenize query (keep Arabic + alphanumeric)
         const tokens = queryLower
             .replace(/[^\u0600-\u06FF\w\s]/g, ' ')
             .split(/\s+/)
@@ -177,14 +203,26 @@ class HybridSearchEngine {
         
         if (tokens.length === 0) return 0;
         
+        // Count matching tokens
         let matches = 0;
+        let partialMatches = 0;
+        
         for (const token of tokens) {
             if (searchableText.includes(token)) {
                 matches++;
+            } else {
+                // Check for partial matches (substring)
+                const parts = searchableText.split(/\s+/);
+                for (const part of parts) {
+                    if (part.includes(token) || token.includes(part)) {
+                        partialMatches += 0.5;
+                        break;
+                    }
+                }
             }
         }
         
-        return matches / tokens.length;
+        return (matches + partialMatches) / tokens.length;
     }
 
     hybridSearch(query, queryVector, database, topK = 10) {
@@ -196,8 +234,8 @@ class HybridSearchEngine {
             const vectorScore = this.similarity(queryVector, item.vector);
             const keywordScore = this.keywordScore(query, item);
             
-            // 75% vector, 25% keyword
-            const finalScore = (vectorScore * 0.75) + (keywordScore * 0.25);
+            // Weighted combination: 70% semantic, 30% keyword
+            const finalScore = (vectorScore * 0.7) + (keywordScore * 0.3);
             
             results.push({
                 id: item.id,
@@ -219,45 +257,67 @@ class HybridSearchEngine {
         const {
             topK = 5,
             useHybrid = true,
-            minScore = 0.15  // Lower threshold for E5
+            minScore = 0.05,  // Absolute minimum (E5 with prefix gives lower scores)
+            relativeThreshold = 0.65  // Keep results within 65% of top score
         } = options;
         
         console.log(`\n🔍 Query: "${query}"`);
         
-        const queryVector = await this.embed(query);
+        // Generate query embedding (query mode = false)
+        const queryVector = await this.embed(query, false);
+        
+        // Classify intent and determine target databases
         const targetDatabases = await this.classifyIntent(queryVector);
         
+        // Search in each target database
         const allResults = [];
         
         for (const dbName of targetDatabases) {
             const database = this.databases[dbName];
             
             if (!database || database.length === 0) {
-                console.warn(`⚠️ Empty: ${dbName}`);
+                console.warn(`⚠️ Empty database: ${dbName}`);
                 continue;
             }
             
             console.log(`🔎 Searching [${dbName}] (${database.length} items)...`);
             
+            // Use hybrid or pure vector search
             const results = useHybrid 
-                ? this.hybridSearch(query, queryVector, database, topK * 2)
-                : this.vectorSearch(queryVector, database, topK * 2);
+                ? this.hybridSearch(query, queryVector, database, topK * 3)
+                : this.vectorSearch(queryVector, database, topK * 3);
             
+            // Tag results with source database
             results.forEach(r => {
                 r.source = dbName;
                 allResults.push(r);
             });
         }
         
-        const finalResults = allResults
-            .sort((a, b) => (b.finalScore || b.score) - (a.finalScore || a.score))
-            .filter(r => (r.finalScore || r.score) >= minScore)
+        // Sort all results
+        const sortedResults = allResults
+            .sort((a, b) => (b.finalScore || b.score) - (a.finalScore || a.score));
+        
+        // Dynamic filtering: keep results within threshold of top result
+        const topScore = sortedResults[0] ? (sortedResults[0].finalScore || sortedResults[0].score) : 0;
+        const dynamicMinScore = Math.max(minScore, topScore * relativeThreshold);
+        
+        console.log(`📊 Top score: ${Math.round(topScore * 100)}%, Dynamic threshold: ${Math.round(dynamicMinScore * 100)}%`);
+        
+        const finalResults = sortedResults
+            .filter(r => (r.finalScore || r.score) >= dynamicMinScore)
             .slice(0, topK);
         
-        console.log(`✅ Found ${finalResults.length} results`);
+        console.log(`✅ Found ${finalResults.length} results (from ${allResults.length} total)`);
+        
         if (finalResults.length > 0) {
             const top = finalResults[0];
-            console.log(`🏆 Top: ${top.id} (${Math.round((top.finalScore || top.score) * 100)}%) [${top.source}]`);
+            console.log(`🏆 Top match: ${top.id} (${Math.round((top.finalScore || top.score) * 100)}%) [${top.source}]`);
+            
+            // Show breakdown for top result
+            if (top.vectorScore !== undefined) {
+                console.log(`   Vector: ${Math.round(top.vectorScore * 100)}%, Keyword: ${Math.round(top.keywordScore * 100)}%`);
+            }
         }
         
         return {
