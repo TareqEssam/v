@@ -2344,6 +2344,10 @@ window.formatSectorARegionsDetailed = formatSectorARegionsDetailed;
 window.formatSectorBRegions = formatSectorBRegions;
 window.formatSectorIncentives = formatSectorIncentives;
 window.formatSectorActivities = formatSectorActivities;
+window.gptAgent.showSmartSearchButtons = showSmartSearchButtons;
+window.gptAgent.smartSearch = smartSearchFixed;
+
+
 
 
 
