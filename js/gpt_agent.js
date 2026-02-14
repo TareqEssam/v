@@ -1563,31 +1563,49 @@ async function processUserQuery(query) {
 
      // ب. [التوجيه الدلالي الذكي] تنفيذ بناءً على النية المصنفة
                 if (vectorMatch && vectorConfidence > 0.65) {
-    const searchTerm = vectorMatch.id; // ← خطأ!
+    // استخدام النص الأصلي من المتجه بدلاً من المعرّف
+    const originalText = vectorMatch.data?.text || query;
     
     switch (vectorTargetDB) {
         case 'decision104':
-            const res104 = await handleDecision104Query(searchTerm, questionType);
-                if (res104 && !res104.includes('لم أجد معلومات')) return res104;
-                break;
+            console.log("⚖️ مسار القرار 104 المتخصص");
+            // استخدام النص الأصلي للبحث
+            const res104 = await handleDecision104Query(originalText, questionType);
+            if (res104 && !res104.includes('لم أجد معلومات')) return res104;
+            break;
 
-            case 'activities':
-                console.log("📋 مسار التراخيص والأنشطة");
-                const act = masterActivityDB.find(a => a.value === searchTerm);
+        case 'activities':
+            console.log("📋 مسار التراخيص والأنشطة");
+            // البحث بالنص الأصلي أو البيانات المحفوظة
+            const activityData = vectorMatch.data?.original_data;
+            if (activityData && activityData.value) {
+                const act = masterActivityDB.find(a => a.value === activityData.value);
                 if (act) {
                     await AgentMemory.setActivity(act, query);
                     return formatActivityResponse(act, questionType);
                 }
-                break;
+            }
+            // Fallback: البحث بالنص
+            const actRes = await handleActivityQuery(originalText, questionType, null, null);
+            if (actRes) return actRes;
+            break;
 
-            case 'areas':
-                console.log("🏭 مسار المناطق الجغرافية");
-                // في المناطق، نفضل أحياناً النص الأصلي handleIndustrialQuery للتعامل مع "المحافظات"
-                const resArea = await handleIndustrialQuery(query, questionType, analysisContext, entities);
-                if (resArea) return resArea;
-                break;
-        }
+        case 'areas':
+            console.log("🏭 مسار المناطق الجغرافية");
+            const areaData = vectorMatch.data?.original_data;
+            if (areaData && areaData.name) {
+                const area = industrialAreasData.find(a => a.name === areaData.name);
+                if (area) {
+                    await AgentMemory.setIndustrial(area, query);
+                    return formatIndustrialResponse(area);
+                }
+            }
+            // Fallback: البحث بالنص
+            const resArea = await handleIndustrialQuery(originalText, questionType, analysisContext, entities);
+            if (resArea) return resArea;
+            break;
     }
+}
 
     // ج. [آلية التوضيح] - إذا كان هناك التباس دلالي
     if (analysisContext.needsClarification && vectorConfidence < 0.80) {
@@ -3509,6 +3527,7 @@ console.log('✅ GPT Agent v9.0 - Core initialized!');
     console.log('🆕 Mobile Optimized: ENABLED 📱');
     console.log('🆕 Fullscreen Expand: ENABLED 🖥️');
 }
+
 
 
 
