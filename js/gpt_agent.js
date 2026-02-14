@@ -2825,10 +2825,12 @@ function formatSingleActivityInDecision104WithIncentives(activityName, itemData,
     const sectorName = sector === 'A' ? 'القطاع أ' : 'القطاع ب';
     const sectorColor = sector === 'A' ? '#4caf50' : '#2196f3';
     
+    // جراحة: نستخدم الاسم الرسمي من itemData لضمان دقة العرض
+    const officialName = itemData.activity || activityName;
     let html = `
     <div class="info-card" style="background: linear-gradient(135deg, ${sector === 'A' ? '#e8f5e9' : '#e3f2fd'}, white); border-left: 4px solid ${sectorColor};">
         <div class="info-card-header" style="color: ${sector === 'A' ? '#2e7d32' : '#1565c0'};">
-            ✅ النشاط "${activityName}" موجود في القرار 104
+            ✅ نشاط: ${officialName}
         </div>
         <div class="info-card-content">
             <div class="info-row">
@@ -3535,6 +3537,7 @@ console.log('✅ GPT Agent v9.0 - Core initialized!');
     console.log('🆕 Mobile Optimized: ENABLED 📱');
     console.log('🆕 Fullscreen Expand: ENABLED 🖥️');
 }
+
 
 
 
