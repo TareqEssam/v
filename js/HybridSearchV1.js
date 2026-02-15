@@ -1,5 +1,5 @@
 /****************************************************************************
- * 🧠 HybridSearchEngine V8 - PRODUCTION FINAL (SCIENTIFIC REFACTOR)
+ * 🧠 HybridSearchEngine V7 - PRODUCTION FINAL (SCIENTIFIC REFACTOR)
  * 
  * ✅ CRITICAL FIX: Base64 Vector Decompression
  * ✅ SCIENTIFIC UPGRADE: Context injection, strict intent routing, RRF ranking
