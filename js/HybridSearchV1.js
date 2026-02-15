@@ -50,22 +50,14 @@ class HybridSearchEngine {
         try {
             this.embedder = await pipeline('feature-extraction', 'Xenova/multilingual-e5-small');
             
-            const loadDatabase = async (filename) => {
-                const res = await fetch(`js/${filename}`);
-                if (!res.ok) throw new Error(`Failed to load: ${filename}`);
-                const jsonData = await res.json();
-                return this.normalizeData(jsonData);
-            };
+            // جراحة: تحميل الملف الموحد الجديد وتوزيعه دلالياً
+const res = await fetch('vector_knowledge_db.json');
+if (!res.ok) throw new Error("فشل تحميل قاعدة البيانات الموحدة");
+const fullData = await res.json();
 
-            const [activities, areas, decision104] = await Promise.all([
-                loadDatabase('activities_vectors.json'),
-                loadDatabase('areas_vectors.json'),
-                loadDatabase('decision104_vectors.json')
-            ]);
-
-            this.databases.activities = activities;
-            this.databases.areas = areas;
-            this.databases.decision104 = decision104;
+this.databases.activities = this.normalizeData(fullData.activities);
+this.databases.areas = this.normalizeData(fullData.areas);
+this.databases.decision104 = this.normalizeData(fullData.decision104);
 
             console.log(`✅ Loaded: activities(${activities.length}), areas(${areas.length}), decision104(${decision104.length})`);
 
@@ -88,11 +80,16 @@ class HybridSearchEngine {
         }
     }
 
-    normalizeData(jsonData) {
-        let items = [];
-        
-        if (jsonData.data && Array.isArray(jsonData.data)) {
-            items = jsonData.data;
+    normalizeData(items) {
+    if (!Array.isArray(items)) return [];
+    
+    return items.map(item => ({
+        id: item.id,
+        vector: this.decodeVector(item.vector),
+        text: item.content["الاسم"] || item.content["النشاط_المحدد"], // للبحث بالكلمات
+        original_data: item.content // الحفاظ على البيانات اللبقة كاملة
+    })).filter(i => i.vector !== null);
+}
             console.log(`📦 Extracted ${items.length} items from 'data' property`);
         } else if (Array.isArray(jsonData)) {
             items = jsonData;
@@ -281,15 +278,15 @@ class HybridSearchEngine {
     keywordScore(query, item) {
         const queryLower = query.toLowerCase();
         
-        const searchableText = [
-            item.text,
-            item.original_data?.name_ar,
-            item.original_data?.name_en,
-            item.original_data?.description,
-            item.original_data?.activity_name,
-            item.original_data?.sector,
-            item.original_data?.main_activity
-        ].filter(Boolean).join(' ').toLowerCase();
+        const d = item.original_data;
+const searchableText = [
+    item.text,
+    d["النشاط_الرئيسي"],
+    d["القطاع_العام"],
+    d["جهة_الولاية"],
+    d["الجهة"],
+    d["وصف"]
+].filter(Boolean).join(' ').toLowerCase();
         
         const tokens = queryLower
             .replace(/[^\u0600-\u06FF\u0660-\u0669\w\s]/g, ' ')
@@ -371,18 +368,20 @@ class HybridSearchEngine {
         const topCosineScore = finalResults[0]?.cosineScore || 0;
 
         return {
-            query: query,
-            intent: finalResults[0]?.dbName || targetDatabases[0],
-            resultsCount: finalResults.length,
-            results: finalResults,
-            topMatch: finalResults[0] || null,
-            // إرسال Cosine Similarity الحقيقية (ليس RRF)
-            confidence: topCosineScore 
-        };
+    query: query,
+    intent: finalResults[0]?.dbName,
+    results: finalResults.map(r => ({
+        ...r,
+        full_report: r.data.original_data // هذا السطر يضمن ظهور الحوافز والشروط والوصف والموقع
+    })),
+    confidence: topCosineScore,
+    metadata: { generated_at: new Date().toISOString(), total_found: allResults.length }
+};
     }
 }
 
 export const hybridEngine = new HybridSearchEngine();
+
 
 
 
