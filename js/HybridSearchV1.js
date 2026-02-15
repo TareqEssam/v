@@ -89,8 +89,12 @@ class HybridSearchEngine {
         return items.map(item => ({
             id: item.id,
             vector: this.decodeVector(item.vector),
-            text: item.content["الاسم"] || item.content["النشاط_المحدد"], // للبحث بالكلمات
-            original_data: item.content // الحفاظ على البيانات اللبقة كاملة
+            // جراحة: تحديد الاسم بناءً على المتوفر في الحقول المختلفة (منطقة، نشاط، قرار)
+            text: item.content["الاسم"] || 
+                  item.content["النشاط_المحدد"] || 
+                  item.content["اسم_المنطقة"] || 
+                  "بيانات صناعية", 
+            original_data: item.content 
         })).filter(i => i.vector !== null);
     }
 
@@ -153,9 +157,10 @@ class HybridSearchEngine {
         const q = query.toLowerCase();
         
         // Hard keyword-based routing (domain filtering)
-        if (q.includes("محافظة") || q.includes("منطقة صناعية") || q.includes("تبعية")) return ['areas'];
-        if (q.includes("قرار 104") || q.includes("حافز") || q.includes("قطاع أ") || q.includes("قطاع ب")) return ['decision104'];
-        if (q.includes("ترخيص") || q.includes("رخصة") || q.includes("مطلوب")) return ['activities'];
+        // جراحة: تعزيز التوجيه الذكي ليشمل مسميات المناطق والأنشطة الشائعة
+        if (q.match(/(محافظة|منطقة|مدينة|فدان|متر)/)) return ['areas'];
+        if (q.match(/(قرار 104|حافز|اعفاء|ضريبة|قطاع)/)) return ['decision104'];
+        if (q.match(/(ترخيص|رخصة|نشاط|صناعة|تطلب|كود)/)) return ['activities'];
 
         // Semantic similarity with higher threshold (0.45)
         const scores = [];
@@ -248,8 +253,11 @@ class HybridSearchEngine {
             d["النشاط_الرئيسي"],
             d["القطاع_العام"],
             d["جهة_الولاية"],
+            d["المحافظة"],     // جراحة: دعم البحث بالمحافظة للمناطق
+            d["التبعية"],       // جراحة: دعم البحث بالجهة التابع لها
             d["الجهة"],
-            d["وصف"]
+            d["وصف"],
+            d["النشاط"]        // جراحة: دعم مسميات الأنشطة
         ].filter(Boolean).join(' ').toLowerCase();
         
         const tokens = queryLower
@@ -345,5 +353,6 @@ class HybridSearchEngine {
 }
 
 export const hybridEngine = new HybridSearchEngine();
+
 
 
