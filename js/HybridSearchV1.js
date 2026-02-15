@@ -51,7 +51,7 @@ class HybridSearchEngine {
             this.embedder = await pipeline('feature-extraction', 'Xenova/multilingual-e5-small');
             
             // جراحة: تحميل الملف الموحد الجديد وتوزيعه دلالياً
-            const res = await fetch('js/vector_knowledge_db.json');
+            const res = await fetch('./js/vector_knowledge_db.json');
             if (!res.ok) throw new Error("فشل تحميل قاعدة البيانات الموحدة");
             const fullData = await res.json();
 
@@ -345,4 +345,5 @@ class HybridSearchEngine {
 }
 
 export const hybridEngine = new HybridSearchEngine();
+
 
