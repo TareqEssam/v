@@ -1,8 +1,11 @@
 /****************************************************************************
- * 🧠 HybridSearchEngine V7 - PRODUCTION FINAL (SCIENTIFIC REFACTOR)
+ * 🧠 HybridSearchEngine V8 - PRODUCTION FINAL (SCIENTIFIC REFACTOR)
  * 
  * ✅ CRITICAL FIX: Base64 Vector Decompression
  * ✅ SCIENTIFIC UPGRADE: Context injection, strict intent routing, RRF ranking
+ * ✅ FIX #1: إضافة topMatch للنتائج المرجعة
+ * ✅ FIX #2: تحسين regex للكلمات المشتقة (اعفاء/اعفاءات)
+ * ✅ FIX #3: خفض العتبة من 0.45 إلى 0.35 لتحسين الحساسية
  ****************************************************************************/
 
 import { pipeline, env } from 'https://cdn.jsdelivr.net/npm/@xenova/transformers@2.17.1';
@@ -152,17 +155,22 @@ class HybridSearchEngine {
 
     /**
      * 🎯 Strict intent routing with keyword override
+     * 
+     * 🔧 FIX #2: تحسين regex للكشف عن الكلمات المشتقة
+     * 🔧 FIX #3: خفض العتبة من 0.45 إلى 0.35
      */
     async classifyIntent(query, queryVector) {
         const q = query.toLowerCase();
         
         // Hard keyword-based routing (domain filtering)
-        // جراحة: تعزيز التوجيه الذكي ليشمل مسميات المناطق والأنشطة الشائعة
+        // 🔧 FIX #2: تحسين regex ليشمل الكلمات المشتقة
         if (q.match(/(محافظة|منطقة|مدينة|فدان|متر)/)) return ['areas'];
-        if (q.match(/(قرار 104|حافز|اعفاء|ضريبة|قطاع)/)) return ['decision104'];
+        // 🔧 FIXED: إضافة دعم للكلمات المشتقة مثل "اعفاءات" بدلاً من "اعفاء" فقط
+        if (q.match(/(قرار\s*104|حافز|حوافز|اعفاء|إعفاء|اعفاءات|إعفاءات|ضريب|قطاع)/)) return ['decision104'];
         if (q.match(/(ترخيص|رخصة|نشاط|صناعة|تطلب|كود)/)) return ['activities'];
 
-        // Semantic similarity with higher threshold (0.45)
+        // Semantic similarity with higher threshold
+        // 🔧 FIX #3: خفض العتبة من 0.45 إلى 0.35 لتحسين الحساسية
         const scores = [];
         for (const [dbName, signature] of Object.entries(this.intentSignatures)) {
             const score = this.similarity(signature, queryVector);
@@ -174,7 +182,8 @@ class HybridSearchEngine {
             `${s.database}: ${Math.round(s.confidence * 100)}%`
         ).join(' | '));
 
-        if (scores[0].confidence > 0.45) return [scores[0].database];
+        // 🔧 FIX #3: خفض العتبة من 0.45 إلى 0.35
+        if (scores[0].confidence > 0.35) return [scores[0].database];
         
         return ['activities', 'decision104', 'areas']; // Fallback
     }
@@ -279,6 +288,8 @@ class HybridSearchEngine {
 
     /**
      * 🚀 Main search method (scientifically refactored)
+     * 
+     * 🔧 FIX #1: إضافة topMatch للنتائج المرجعة
      */
     async search(query, options = {}) {
         if (!this.isReady) await this.initialize();
@@ -313,7 +324,7 @@ class HybridSearchEngine {
                     data: item
                 }))
                 .filter(r => r.score > 0)
-                .sort((a, b) => b.score - a.score)
+                .sort((a, b) => b.score - a.sort)
                 .slice(0, 20);
             
             // Fuse with RRF
@@ -339,9 +350,16 @@ class HybridSearchEngine {
         // استخراج Cosine Similarity الحقيقية من النتيجة الأولى
         const topCosineScore = finalResults[0]?.cosineScore || 0;
 
+        // 🔧 FIX #1: إضافة topMatch للنتائج المرجعة
         return {
             query: query,
             intent: finalResults[0]?.dbName,
+            topMatch: finalResults[0] ? {
+                id: finalResults[0].id,
+                dbName: finalResults[0].dbName,
+                score: finalResults[0].cosineScore || 0,
+                data: finalResults[0].data
+            } : null,
             results: finalResults.map(r => ({
                 ...r,
                 full_report: r.data.original_data // هذا السطر يضمن ظهور الحوافز والشروط والوصف والموقع
@@ -353,6 +371,3 @@ class HybridSearchEngine {
 }
 
 export const hybridEngine = new HybridSearchEngine();
-
-
-
