@@ -2691,17 +2691,20 @@ if (shouldAutoSpeak && typeof window.speakText === 'function' && fullTextForSpee
 
 
 
-    function showTypingIndicator() {
-        const id = 'typing-' + Date.now();
-        const container = document.getElementById('gptMessages');
-        const div = document.createElement('div');
-        div.className = 'message-row ai';
-        div.id = id;
-        div.innerHTML = `<div class="avatar ai"><i class="fas fa-robot"></i></div><div class="message-bubble"><div class="typing-indicator"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div></div>`;
-        container.appendChild(div);
-        container.scrollTop = container.scrollHeight;
-        return id;
-    }
+    window.showTypingIndicator = function() {
+    const id = 'typing-' + Date.now();
+    const container = document.getElementById('gptMessages');
+    if (!container) return null; // حماية في حال عدم وجود الحاوية
+    
+    const div = document.createElement('div');
+    div.className = 'message-row ai';
+    div.id = id;
+    div.innerHTML = `<div class="avatar ai"><i class="fas fa-robot"></i></div><div class="message-bubble"><div class="typing-indicator"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div></div>`;
+    
+    container.appendChild(div);
+    container.scrollTop = container.scrollHeight;
+    return id;
+};
 
 
 /**
@@ -3253,13 +3256,13 @@ function formatSectorActivities(sector) {
     </div>
     `;
 }
-// ==================== 🆕 نهاية دوال الأزرار الذكية ====================
 // ==================== 🆕 دوال الأزرار الذكية للبحث - نهاية ====================
 
-    function removeTypingIndicator(id) {
-        const el = document.getElementById(id);
-        if (el) el.remove();
-    }
+    // 2. تعريف دالة حذف مؤشر الكتابة كدالة عالمية
+window.removeTypingIndicator = function(id) {
+    const el = document.getElementById(id);
+    if (el) el.remove();
+};
 
     function escapeHtml(text) {
         return text
@@ -3565,6 +3568,7 @@ console.log('✅ GPT Agent v9.0 - Core initialized!');
     console.log('🆕 Mobile Optimized: ENABLED 📱');
     console.log('🆕 Fullscreen Expand: ENABLED 🖥️');
 }
+
 
 
 
