@@ -1,38 +1,6 @@
-// gpt_areas.js
 window.GPT_AGENT = window.GPT_AGENT || {};
+ 
 
-
-// ==================== دالة اختيار أفضل جهة ولاية ====================
-function getBestMatchingDependency(query, candidates) {
-    if (!candidates || candidates.length === 0) return null;
-    if (candidates.length === 1) return candidates[0];
-
-    const q = normalizeArabic(query);
-    let best = { name: null, score: 0 };
-
-    candidates.forEach(dep => {
-        const normalizedDep = normalizeArabic(dep);
-        const depWords = normalizedDep.split(/\s+/).filter(w => w.length > 2);
-        const qWords = q.split(/\s+/).filter(w => w.length > 2);
-        if (depWords.length === 0) return;
-
-        let matchCount = 0;
-        depWords.forEach(dw => {
-            for (let qw of qWords) {
-                if (qw.includes(dw) || dw.includes(qw)) {
-                    matchCount++;
-                    break;
-                }
-            }
-        });
-        const score = (matchCount / depWords.length) * 100;
-        if (score > best.score) {
-            best = { name: dep, score };
-        }
-    });
-
-    return best.name || candidates[0];
-}
 // ==================== معالج أسئلة المناطق الصناعية - الإصدار المصحح ✅ ====================
 async function handleIndustrialQuery(query, questionType, preComputedContext, preComputedEntities) {
     if (typeof industrialAreasData === 'undefined') {
@@ -44,19 +12,22 @@ async function handleIndustrialQuery(query, questionType, preComputedContext, pr
     const totalAreas = industrialAreasData.length;
 
     // ⭐ استخدام البيانات المحسوبة إن وُجدت
-    const entities = preComputedEntities || window.extractEntities(query);
-
+    const entities = preComputedEntities || extractEntities(query);
+    
     console.log("🏭 معالج المناطق - سؤال:", query);
-    // 🆕 فحص إذا كان السؤال عن تفاصيل منطقة محددة
+      // 🆕 فحص إذا كان السؤال عن تفاصيل منطقة محددة
     if (/تفاصيل المنطقة الصناعية (.+)/.test(query)) {
         const match = query.match(/تفاصيل المنطقة الصناعية (.+)/);
         if (match && match[1]) {
             const areaName = match[1].trim();
             console.log("📋 طلب تفاصيل المنطقة:", areaName);
-            const exactArea = industrialAreasData.find(area =>
+            
+            // البحث عن المنطقة بالاسم الدقيق
+            const exactArea = industrialAreasData.find(area => 
                 normalizeArabic(area.name) === normalizeArabic(areaName) ||
                 area.name === areaName
             );
+            
             if (exactArea) {
                 console.log("✅ تم العثور على المنطقة:", exactArea.name);
                 return formatSingleAreaResponse(exactArea, areaName);
@@ -66,7 +37,7 @@ async function handleIndustrialQuery(query, questionType, preComputedContext, pr
     console.log("🎯 الكيانات المستخدمة:", entities);
 
     // === المستوى 1: الأسئلة المحددة بوضوح ===
-
+    
     // 1. السؤال العام عن عدد المناطق الصناعية
     if (questionType.isGeneralAreaCount) {
         console.log("📊 سؤال عام عن عدد المناطق");
@@ -85,17 +56,19 @@ async function handleIndustrialQuery(query, questionType, preComputedContext, pr
         const area = industrialAreasData.find(a => a.name === entities.areaNames[0].name);
         if (area) {
             await AgentMemory.setIndustrial(area, query);
+
             return formatIndustrialMapLink(area);
         }
     }
 
     // === المستوى 2: الأسئلة عن العدد ===
-
+    
     // 4. السؤال عن عدد المناطق في محافظة معينة
     if (questionType.isSpecificAreaCount && entities.hasGovernorate) {
         console.log("📍 سؤال عن عدد المناطق في محافظة");
         const gov = entities.governorates[0];
         const count = industrialAreasData.filter(a => a.governorate === gov).length;
+        
         if (count > 0) {
             return `📢 <strong>عدد المناطق الصناعية في محافظة ${gov}:</strong> ${count} منطقة
                 <div style="margin-top: 10px; padding: 8px; background: #f0f9ff; border-radius: 8px; font-size: 0.85rem; color: #0369a1;">
@@ -105,29 +78,46 @@ async function handleIndustrialQuery(query, questionType, preComputedContext, pr
     }
 
     // 5. 🆕 السؤال عن عدد المناطق التابعة لجهة معينة
-    if (questionType.isSpecificAreaCount && entities.hasDependency) {
+if (questionType.isSpecificAreaCount && entities.hasDependency) {
     console.log("🏛️ ✅✅✅ دخلت شرط عدد المناطق التابعة لجهة");
-    const bestDep = getBestMatchingDependency(query, entities.dependencies);
-    const count = industrialAreasData.filter(a => a.dependency === bestDep).length;
+    console.log("📊 questionType.isSpecificAreaCount:", questionType.isSpecificAreaCount);
+    console.log("📊 entities.hasDependency:", entities.hasDependency);
+    console.log("📊 entities.dependencies:", entities.dependencies);
+    
+    const dep = entities.dependencies[0];
+    console.log(`🔍 الجهة المختارة: "${dep}"`);
+    
+    const count = industrialAreasData.filter(a => a.dependency === dep).length;
+    console.log(`📊 العدد الإجمالي: ${count} منطقة`);
+    
     if (count > 0) {
-        return `📊 <strong>عدد المناطق الصناعية التابعة لـ ${bestDep}:</strong> ${count} منطقة ...`;
+        console.log("✅ إرجاع النتيجة");
+        return `📊 <strong>عدد المناطق الصناعية التابعة لـ ${dep}:</strong> ${count} منطقة
+            <div style="margin-top: 10px; padding: 8px; background: #f0f9ff; border-radius: 8px; font-size: 0.85rem; color: #0369a1;">
+                💡 يمكنك سؤالي: "ما هي المناطق التابعة لـ ${dep}؟"
+            </div>`;
     } else {
+        console.log(`⚠️ لم أجد مناطق تابعة لـ ${dep}`);
+        
+        // عرض خيارات بديلة
         const allDeps = [...new Set(industrialAreasData.map(a => a.dependency))];
         return formatDependencyChoices(allDeps);
     }
 }
 
-    console.log("⚠️ لم يدخل شرط عدد المناطق التابعة لجهة");
-    console.log("🔍 سبب محتمل: questionType.isSpecificAreaCount =", questionType.isSpecificAreaCount);
-    console.log("🔍 سبب محتمل: entities.hasDependency =", entities.hasDependency);
-
+console.log("⚠️ لم يدخل شرط عدد المناطق التابعة لجهة");
+console.log("🔍 سبب محتمل: questionType.isSpecificAreaCount =", questionType.isSpecificAreaCount);
+console.log("🔍 سبب محتمل: entities.hasDependency =", entities.hasDependency);
+    
     // 6. 🆕 السؤال عن عدد الجهات أو المحافظات
     if (questionType.isCount && (q.includes('جهه') || q.includes('محافظه')) && !entities.hasGovernorate && !entities.hasDependency) {
         console.log("📊 سؤال عن عدد الجهات/المحافظات");
+        
         if (q.includes('جهه') || q.includes('جهة') || q.includes('ولاية')) {
             const deps = [...new Set(industrialAreasData.map(a => a.dependency))];
             return formatDependenciesCount(deps);
         }
+        
         if (q.includes('محافظه') || q.includes('محافظة')) {
             const govs = [...new Set(industrialAreasData.map(a => a.governorate))];
             return formatGovernoratesCount(govs);
@@ -135,27 +125,38 @@ async function handleIndustrialQuery(query, questionType, preComputedContext, pr
     }
 
     // === المستوى 3: الأسئلة عن القوائم ===
+    
+    // 7. السؤال عن قائمة المناطق في محافظة
+    if (questionType.isAreaList && entities.hasGovernorate) {
+        console.log("🗺️ سؤال عن قائمة المناطق في محافظة");
+        const gov = entities.governorates[0];
+        const areas = industrialAreasData.filter(a => a.governorate === gov);
+        
+        if (areas.length > 0) {
+            return formatAreasListByGovernorate(gov, areas);
+        }
+    }
 
-    // 7. السؤال عن قائمة المناطق التابعة لجهة (تم وضعه أولاً)
+    // 8. السؤال عن قائمة المناطق التابعة لجهة
 if ((questionType.isAreaList || questionType.isList) && entities.hasDependency) {
     console.log("📋 ✅✅✅ دخلت شرط قائمة المناطق التابعة لجهة");
-    const bestDep = getBestMatchingDependency(query, entities.dependencies);
-    const areas = industrialAreasData.filter(a => a.dependency === bestDep);
+    console.log("📊 questionType.isAreaList:", questionType.isAreaList);
+    console.log("📊 questionType.isList:", questionType.isList);
+    console.log("📊 entities.hasDependency:", entities.hasDependency);
+    console.log("📊 entities.dependencies:", entities.dependencies);
+    
+    const dep = entities.dependencies[0];
+    console.log(`🔍 الجهة المختارة: "${dep}"`);
+    
+    const areas = industrialAreasData.filter(a => a.dependency === dep);
+    console.log(`📊 عدد المناطق: ${areas.length} منطقة`);
+    
     if (areas.length > 0) {
-        return formatAreasListByDependency(bestDep, areas);
+        console.log("✅ إرجاع قائمة المناطق");
+        return formatAreasListByDependency(dep, areas);
     }
 }
-
-// 8. السؤال عن قائمة المناطق في محافظة (يأتي بعد التبعية)
-if (questionType.isAreaList && entities.hasGovernorate) {
-    console.log("🗺️ سؤال عن قائمة المناطق في محافظة");
-    const gov = entities.governorates[0];
-    const areas = industrialAreasData.filter(a => a.governorate === gov);
-    if (areas.length > 0) {
-        return formatAreasListByGovernorate(gov, areas);
-    }
-}
-
+    
     // 9. 🆕 عرض كل المناطق
     if ((questionType.isList || q.includes('جميع') || q.includes('كل')) && questionType.isIndustrial) {
         console.log("📋 طلب عرض كل المناطق");
@@ -163,47 +164,57 @@ if (questionType.isAreaList && entities.hasGovernorate) {
     }
 
     // === المستوى 4: البحث عن منطقة محددة ===
-
+    
     // 10. 🆕 إذا وُجد اسم منطقة في الكيانات
     if (entities.hasAreaName) {
         console.log("📍 وُجد اسم منطقة في الكيانات");
+        
+        // حالة وجود منطقة واحدة بثقة عالية
         if (entities.areaNames.length === 1 && entities.areaNames[0].confidence >= 80) {
             const areaName = entities.areaNames[0].name;
             const area = industrialAreasData.find(a => a.name === areaName);
+            
             if (area) {
                 await AgentMemory.setIndustrial(area, query);
+
+                
                 if (questionType.isYesNo) {
                     return `✅ نعم، <strong>${area.name}</strong> هي منطقة صناعية معتمدة.`;
                 }
+                
                 return formatIndustrialResponse(area);
             }
         }
+        
+        // حالة وجود عدة مناطق محتملة
         if (entities.areaNames.length > 1) {
             console.log("🤔 عدة مناطق محتملة");
             return buildMultipleAreasClarification(entities.areaNames);
         }
     }
-
-    // 11. البحث التقليدي عن منطقة محددة باستخدام الدالة العامة
+    
+    // 11. البحث التقليدي عن منطقة محددة
     console.log("🔍 البحث التقليدي عن منطقة");
-    const foundArea = window.searchIndustrialZonesWithNeural(query);
+    const foundArea = searchIndustrialZonesWithNeural(query);
     if (foundArea) {
         AgentMemory.setIndustrial(foundArea, query);
+        
         if (questionType.isYesNo) {
             return `✅ نعم، <strong>${foundArea.name}</strong> هي منطقة صناعية معتمدة.`;
         }
+        
         return formatIndustrialResponse(foundArea);
     }
 
     // === المستوى 5: الحالات الخاصة ===
-
+    
     // 12. 🆕 سؤال عن جهة الولاية بدون تحديد منطقة
     if (questionType.isGovernanceAuthority && !entities.hasAreaName) {
         console.log("🏛️ سؤال عام عن جهات الولاية");
         const deps = [...new Set(industrialAreasData.map(a => a.dependency))];
         return formatDependencyChoices(deps);
     }
-
+    
     // 13. 🆕 سؤال عن محافظة بدون تحديد
     if (questionType.isGovernorate && !entities.hasGovernorate) {
         console.log("🗺️ سؤال عام عن المحافظات");
@@ -212,7 +223,7 @@ if (questionType.isAreaList && entities.hasGovernorate) {
     }
 
     // === المستوى 6: الخيارات الافتراضية ===
-
+    
     // 14. إذا كان السؤال عن مناطق ولم نجد، نعرض خيارات
     if (questionType.isIndustrial) {
         console.log("❓ لم نجد إجابة محددة - عرض خيارات");
@@ -222,23 +233,52 @@ if (questionType.isAreaList && entities.hasGovernorate) {
     return null;
 }
 
-// ==================== 🆕 دوال مساعدة جديدة - محسّنة ✅ ====================
 
-// ✅ دالة تنظيف الكلمات من البادئات واللواحق
-function cleanSearchKeyword(keyword) {
-    if (!keyword || keyword.length <= 2) return "";
-    let cleaned = normalizeArabic(keyword)
-        .replace(/^(ال|بال|وال|لل|فال|كال|ب)/g, '')
-        .replace(/[هةىي]$/g, '')
-        .trim();
-    return cleaned.length > 1 ? cleaned : "";
+// ==================== 🗺️ خيارات الاستكشاف ====================
+function formatExploreOptions() {
+    return `
+        <div style="margin-top: 16px; padding: 14px; background: #f8f9fa; border-radius: 12px;">
+            <div style="font-weight: 600; color: #2c3e50; margin-bottom: 10px; font-size: 0.9rem;">
+                🔍 أو استكشف المناطق بطريقة أخرى:
+            </div>
+            
+            <div class="choice-btn" onclick="sendMessage('عرض كل المناطق الصناعية')" style="margin: 6px 0; padding: 10px 14px;">
+                <span class="choice-icon">📋</span>
+                <strong style="font-size: 0.9rem;">قائمة كل المناطق الصناعية</strong>
+            </div>
+            
+            <div class="choice-btn" onclick="sendMessage('كم عدد المناطق الصناعية لكل جهة ولاية')" style="margin: 6px 0; padding: 10px 14px;">
+                <span class="choice-icon">🏛️</span>
+                <strong style="font-size: 0.9rem;">المناطق حسب جهة الولاية</strong>
+            </div>
+            
+            <div class="choice-btn" onclick="sendMessage('كم عدد المناطق الصناعية لكل محافظة')" style="margin: 6px 0; padding: 10px 14px;">
+                <span class="choice-icon">🗺️</span>
+                <strong style="font-size: 0.9rem;">المناطق حسب المحافظة</strong>
+            </div>
+        </div>
+    `;
 }
 
-// معالج أسئلة Yes/No عن وجود منطقة - النسخة الاحترافية الشاملة
+
+// ==================== 🆕 دوال مساعدة جديدة - محسّنة ✅ ====================
+
+// ✅ دالة تنظيف الكلمات من البادئات واللواحق (جديدة)
+function cleanSearchKeyword(keyword) {
+    if (!keyword || keyword.length <= 2) return ""; // تجاهل الكلمات القصيرة جداً ككلمات بحث
+    let cleaned = normalizeArabic(keyword)
+        .replace(/^(ال|بال|وال|لل|فال|كال|ب)/g, '') 
+        .replace(/[هةىي]$/g, '') 
+        .trim();
+    return cleaned.length > 1 ? cleaned : ""; // ضمان عدم العودة بحرف واحد
+}
+// معالج أسئلة Yes/No عن وجود منطقة - النسخة المحسّنة ✅
+// معالج أسئلة Yes/No عن وجود منطقة - النسخة الاحترافية (المعالجة الشاملة) ✅
+// معالج أسئلة Yes/No عن وجود منطقة - النسخة الاحترافية الشاملة (المصححة) ✅
 function handleAreaExistenceQuestion(query, entities, normalizedQuery, keywords) {
     console.log("❓ فحص وجود منطقة:", query);
-
-    // 1. استخدام NeuralSearch للحصول على النتائج الأولية
+    
+    // 1. استخدام NeuralSearch للحصول على النتائج الأولية (للمطابقات التقريبية)
     const neuralResults = NeuralSearch(query, industrialAreasData, { minScore: 50 });
     const searchResults = neuralResults.results.map(r => ({
         area: r.originalData,
@@ -246,52 +286,64 @@ function handleAreaExistenceQuestion(query, entities, normalizedQuery, keywords)
         score: r.finalScore,
         matchType: r.matches.length > 0 ? r.matches[0].type : 'unknown'
     }));
-
+    
     console.log(`🔍 نتائج البحث العصبي الأولية: ${searchResults.length} منطقة`);
-
-    // === 🧠 استخراج الكلمة المفتاحية
+    
+    // === 🧠 استخراج الكلمة المفتاحية (Core Keyword Extraction) ===
     const extractSearchKeyword = (q) => {
         const normalized = normalizeArabic(q);
-        const skipWords = ['في', 'ب', 'بمنطقة', 'بمنطقه', 'داخل', 'نطاق', 'باسم', 'بالقرب', 'قريبة', 'قريبه', 'عند', 'بجانب', 'جنب', 'تقريبا', 'بمدينة', 'بمدينه'];
+             const skipWords = ['في', 'ب', 'بمنطقة', 'بمنطقه', 'داخل', 'نطاق', 'باسم', 'بالقرب', 'قريبة', 'قريبه', 'عند', 'بجانب', 'جنب', 'تقريبا', 'بمدينة', 'بمدينه'];
+
         const noiseWords = [
-            'منطقه', 'منطقة', 'صناعيه', 'صناعية', 'هل', 'يوجد', 'باسم',
-            'مكان', 'فين', 'اين', 'عنوان', 'اسمها', 'ب', 'بمنطقة', 'بمنطقه', 'داخل', 'نطاق', 'باسم', 'بالقرب', 'قريبة', 'قريبه', 'عند', 'بجانب', 'جنب', 'تقريبا', 'بمدينة', 'اسمه', 'الحتة', 'الحته', 'حتة', 'حته', 'اسم', 'كلمة', 'كلمه', 'عبارة', 'عباره'
+            'منطقه', 'منطقة', 'صناعيه', 'صناعية', 'هل', 'يوجد', 'باسم', 
+            'مكان', 'فين', 'اين', 'عنوان', 'اسمها',  'ب', 'بمنطقة', 'بمنطقه', 'داخل', 'نطاق', 'باسم', 'بالقرب', 'قريبة', 'قريبه', 'عند', 'بجانب', 'جنب', 'تقريبا', 'بمدينة','اسمه','الحتة','الحته','حتة','حته', 'اسم', 'كلمة', 'كلمه', 'عبارة', 'عباره'
         ];
+        
         const regex = /(?:باسم|اسم|منطقة|منطقه)\s+(?:صناعيه\s+|صناعية\s+)?([\u0600-\u06FF]+)/;
         const match = normalized.match(regex);
+        
         if (match && match[1] && !noiseWords.includes(match[1])) {
             return match[1];
         }
-        const words = normalized.split(/\s+/).filter(w =>
-            w.length > 2 &&
-            !noiseWords.includes(w) &&
+
+        const words = normalized.split(/\s+/).filter(w => 
+            w.length > 2 && 
+            !noiseWords.includes(w) && 
             !(window.GPT_AGENT.stopWords || []).includes(w)
         );
-        return words.length > 0 ? words[0] : null;
+        
+        return words.length > 0 ? words[0] : null; 
     };
-
+    
     const searchKeyword = extractSearchKeyword(query);
     const searchKeywordCleaned = cleanSearchKeyword(searchKeyword);
-
+    
     console.log(`🔑 الكلمة المفتاحية المستهدفة: "${searchKeyword}" → بعد التنظيف: "${searchKeywordCleaned}"`);
-
-    // 2. المسح الشامل في قاعدة البيانات
+    
+    // 2. التصحيح الجوهري: "المسح الشامل" (Global DB Scan)
+    // بدلاً من الفلترة من نتائج Neural فقط، سنبحث في قاعدة البيانات كاملة لضمان عدم سقوط أي منطقة
     let keywordFiltered = [];
+    
     if (searchKeywordCleaned) {
+        // فحص كافة المناطق في قاعدة البيانات
         const globalMatches = industrialAreasData.filter(area => {
             const areaNameNorm = normalizeArabic(area.name);
             const areaNameWords = areaNameNorm.split(/\s+/);
-            return areaNameNorm.includes(searchKeywordCleaned) ||
+            
+            // تحقق من وجود الكلمة في أي جزء من الاسم أو تطابق الكلمات بعد تنظيفها
+            return areaNameNorm.includes(searchKeywordCleaned) || 
                    areaNameWords.some(word => cleanSearchKeyword(word).includes(searchKeywordCleaned));
         });
+
+        // تحويل النتائج لتتوافق مع تنسيق الدالة
         keywordFiltered = globalMatches.map(area => ({
             area: area,
-            confidence: 100,
+            confidence: 100, // مطابقات الكلمات المفتاحية المباشرة تأخذ أولوية قصوى
             matchType: 'keyword_direct'
         }));
     }
 
-    // دمج النتائج
+    // دمج نتائج المسح الشامل مع نتائج البحث العصبي وإزالة التكرار
     let finalSelection = [...keywordFiltered];
     searchResults.forEach(nr => {
         if (!finalSelection.some(fs => fs.area.name === nr.area.name)) {
@@ -300,26 +352,31 @@ function handleAreaExistenceQuestion(query, entities, normalizedQuery, keywords)
     });
 
     console.log(`🎯 النتائج النهائية بعد الدمج والفلترة: ${finalSelection.length} منطقة`);
-
-    // === [المسار أ]: التعامل مع المطابقات المؤكدة للكلمة المفتاحية
+    
+    // === [المسار أ]: التعامل مع المطابقات المؤكدة للكلمة المفتاحية ===
     if (keywordFiltered.length > 0) {
         if (keywordFiltered.length === 1) {
             const result = keywordFiltered[0];
-            if (window.AgentMemory) window.AgentMemory.setIndustrial(result.area, query);
-            const areaName = result.area.name;
-            const displayName = (areaName.startsWith('المنطقة') || areaName.startsWith('منطقة')) ? areaName : `منطقة ${areaName}`;
+                      if (window.AgentMemory) window.AgentMemory.setIndustrial(result.area, query);
+ // التحقق لمنع التكرار: إذا كان الاسم يبدأ بـ "المنطقة" أو "منطقة" لا تضفها قبل الاسم
+    const areaName = result.area.name;
+    const displayName = (areaName.startsWith('المنطقة') || areaName.startsWith('منطقة')) ? areaName : `منطقة ${areaName}`;
+
             return `✅ <strong>نعم</strong>، <strong>${displayName}</strong> هي منطقة صناعية معتمدة.<br>
-                <small style="color: #666;">📍 تقع في محافظة ${result.area.governorate}</small><br><br>
-                <div class="choice-btn" onclick="selectIndustrialArea('${result.area.name.replace(/'/g, "\\'")}')">
-                    <span class="choice-icon">📋</span> <strong>عرض التفاصيل الكاملة للمنطقة</strong>
-                </div>
-                <div style="margin-top: 10px; padding: 12px; background: #f8fafc; border-radius: 10px; border-right: 4px solid #0ea5e9; font-size: 0.85rem; color: #1e293b; line-height: 1.6;">
-                    💡 <strong>يمكنك سؤالي عن:</strong><br>
-                    • جهة الولاية • المحافظة • المساحة • القرار • عرض الخريطة
-                </div>
-                ${buildExplorationButtons()}`;
-        }
+    <small style="color: #666;">📍 تقع في محافظة ${result.area.governorate}</small><br><br>
+    <div class="choice-btn" onclick="selectIndustrialArea('${result.area.name.replace(/'/g, "\\'")}')">
+        <span class="choice-icon">📋</span> <strong>عرض التفاصيل الكاملة للمنطقة</strong>
+    </div>
+    <div style="margin-top: 10px; padding: 12px; background: #f8fafc; border-radius: 10px; border-right: 4px solid #0ea5e9; font-size: 0.85rem; color: #1e293b; line-height: 1.6;">
+        💡 <strong>يمكنك سؤالي عن:</strong><br>
+        • جهة الولاية • المحافظة • المساحة • القرار • عرض الخريطة
+    </div>
+    ${buildExplorationButtons()}`;
+}
+        
+        // ذكاء اصطناعي: عرض كافة المناطق التي تشترك في نفس الاسم (مثل البساتين)
         let html = `✅ <strong>نعم</strong>، وَجدتُ <strong>${keywordFiltered.length} مناطق</strong> صناعية مرتبطة بـ "${searchKeyword}":<br><br>`;
+        
         keywordFiltered.forEach((result, i) => {
             html += `<div class="choice-btn" onclick="selectIndustrialArea('${result.area.name.replace(/'/g, "\\'")}')">
                 <span class="choice-icon">${i === 0 ? '🎯' : '🏭'}</span>
@@ -329,12 +386,15 @@ function handleAreaExistenceQuestion(query, entities, normalizedQuery, keywords)
                 </div>
             </div>`;
         });
+        
         html += `<div style="margin-top: 10px; font-size: 0.85rem; color: #666;">💡 اختر المنطقة التي تقصدها لعرض بياناتها الفنية بالكامل.</div>`;
         html += buildExplorationButtons();
         return html;
     }
-
-    // === [المسار ب]: التعامل مع نتائج البحث العصبي العامة
+    
+    // === [المسار ب]: التعامل مع نتائج البحث العصبي العامة (في حال عدم وجود كلمة مفتاحية صريحة) ===
+    
+    // حالة 1: لم نجد أي تطابق على الإطلاق
     if (finalSelection.length === 0) {
         return `❌ <strong>لا</strong>، لم أجد منطقة صناعية بهذا الاسم في قاعدة البيانات.<br><br>
             <div style="padding: 10px; background: #fff9e6; border-radius: 8px; border-right: 3px solid #ffc107; margin-bottom: 12px;">
@@ -342,24 +402,26 @@ function handleAreaExistenceQuestion(query, entities, normalizedQuery, keywords)
             </div>
             ${buildExplorationButtons()}`;
     }
-
+    
+    // حالة 2: تطابق واحد فقط (من البحث العصبي)
     if (finalSelection.length === 1) {
         const result = finalSelection[0];
         if (result.confidence >= 70) {
-            if (window.AgentMemory) window.AgentMemory.setIndustrial(result.area, query);
-            const areaName = result.area.name;
-            const displayName = (areaName.startsWith('المنطقة') || areaName.startsWith('منطقة')) ? areaName : `منطقة ${areaName}`;
-            return `✅ <strong>نعم</strong>، <strong>${displayName}</strong> هي منطقة صناعية معتمدة.<br>
-                <small style="color: #666;">📍 تقع في محافظة ${result.area.governorate}</small><br><br>
-                <div class="choice-btn" onclick="selectIndustrialArea('${result.area.name.replace(/'/g, "\\'")}')">
-                    <span class="choice-icon">📋</span> <strong>عرض التفاصيل الكاملة للمنطقة</strong>
-                </div>
-                <div style="margin-top: 10px; padding: 12px; background: #f8fafc; border-radius: 10px; border-right: 4px solid #0ea5e9; font-size: 0.85rem; color: #1e293b; line-height: 1.6;">
-                    💡 <strong>يمكنك سؤالي عن:</strong><br>
-                    • جهة الولاية • المحافظة • المساحة • القرار • عرض الخريطة
-                </div>
-                ${buildExplorationButtons()}`;
-        } else {
+                 if (window.AgentMemory) window.AgentMemory.setIndustrial(result.area, query);
+const areaName = result.area.name;
+        const displayName = (areaName.startsWith('المنطقة') || areaName.startsWith('منطقة')) ? areaName : `منطقة ${areaName}`;
+
+    return `✅ <strong>نعم</strong>، <strong>${displayName}</strong> هي منطقة صناعية معتمدة.<br>
+        <small style="color: #666;">📍 تقع في محافظة ${result.area.governorate}</small><br><br>
+        <div class="choice-btn" onclick="selectIndustrialArea('${result.area.name.replace(/'/g, "\\'")}')">
+            <span class="choice-icon">📋</span> <strong>عرض التفاصيل الكاملة للمنطقة</strong>
+        </div>
+        <div style="margin-top: 10px; padding: 12px; background: #f8fafc; border-radius: 10px; border-right: 4px solid #0ea5e9; font-size: 0.85rem; color: #1e293b; line-height: 1.6;">
+            💡 <strong>يمكنك سؤالي عن:</strong><br>
+            • جهة الولاية • المحافظة • المساحة • القرار • عرض الخريطة
+        </div>
+        ${buildExplorationButtons()}`;
+} else {
             return `⚠️ <strong>ربما تقصد:</strong> <strong>${result.area.name}</strong>؟<br>
                 <small style="color: #666;">📍 ${result.area.governorate} • تطابق ${result.confidence}%</small><br><br>
                 <div class="choice-btn" onclick="selectIndustrialArea('${result.area.name.replace(/'/g, "\\'")}')">
@@ -368,8 +430,10 @@ function handleAreaExistenceQuestion(query, entities, normalizedQuery, keywords)
                 ${buildExplorationButtons()}`;
         }
     }
-
+    
+    // حالة 3: عدة مناطق متشابهة (2-5 نتائج)
     if (finalSelection.length >= 2 && finalSelection.length <= 5) {
+        // إذا كانت النتيجة الأولى واضحة جداً والبقية ضعيفة
         if (finalSelection[0].confidence >= 85 && finalSelection[1].confidence < 60) {
             const topResult = finalSelection[0];
             return `⚠️ <strong>ربما تقصد:</strong> <strong>${topResult.area.name}</strong>؟<br>
@@ -379,6 +443,7 @@ function handleAreaExistenceQuestion(query, entities, normalizedQuery, keywords)
                 </div>
                 ${buildExplorationButtons()}`;
         }
+        
         let html = `🤔 <strong>وَجدتْ ${finalSelection.length} مناطق بأسماء متشابهة:</strong><br><br>`;
         finalSelection.forEach((result, i) => {
             html += `<div class="choice-btn" onclick="selectIndustrialArea('${result.area.name.replace(/'/g, "\\'")}')">
@@ -392,7 +457,8 @@ function handleAreaExistenceQuestion(query, entities, normalizedQuery, keywords)
         html += buildExplorationButtons();
         return html;
     }
-
+    
+    // حالة 4: عدد كبير من النتائج (> 5)
     if (finalSelection.length > 5) {
         const hasGoodMatches = finalSelection.some(r => r.confidence >= 60);
         if (!hasGoodMatches) {
@@ -402,6 +468,7 @@ function handleAreaExistenceQuestion(query, entities, normalizedQuery, keywords)
                 </div>
                 ${buildExplorationButtons()}`;
         }
+        
         const goodResults = finalSelection.filter(r => r.confidence >= 60).slice(0, 5);
         let html = `🔍 <strong>وَجدتْ ${goodResults.length} منطقة محتملة:</strong><br><br>`;
         goodResults.forEach((result, i) => {
@@ -416,7 +483,7 @@ function handleAreaExistenceQuestion(query, entities, normalizedQuery, keywords)
         html += buildExplorationButtons();
         return html;
     }
-
+    
     return `❌ <strong>لا</strong>، لم أجد منطقة صناعية بهذا الاسم في قاعدة البيانات.<br><br>
         ${buildExplorationButtons()}`;
 }
@@ -428,14 +495,17 @@ function buildExplorationButtons() {
             <div style="font-weight: 600; color: #495057; margin-bottom: 10px; font-size: 0.9rem;">
                 🔍 أو استكشف المناطق بطريقة أخرى:
             </div>
+            
             <div class="choice-btn" onclick="sendMessage('عرض كل المناطق الصناعية')" style="margin: 6px 0; padding: 10px 14px;">
                 <span class="choice-icon">📋</span>
                 <strong style="font-size: 0.9rem;">قائمة كل المناطق الصناعية</strong>
             </div>
+            
             <div class="choice-btn" onclick="sendMessage('كم عدد المناطق الصناعية لكل جهة ولاية')" style="margin: 6px 0; padding: 10px 14px;">
                 <span class="choice-icon">🏛️</span>
                 <strong style="font-size: 0.9rem;">المناطق حسب جهة الولاية</strong>
             </div>
+            
             <div class="choice-btn" onclick="sendMessage('كم عدد المناطق الصناعية لكل محافظة')" style="margin: 6px 0; padding: 10px 14px;">
                 <span class="choice-icon">🗺️</span>
                 <strong style="font-size: 0.9rem;">المناطق حسب المحافظة</strong>
@@ -447,6 +517,7 @@ function buildExplorationButtons() {
 // عرض كل المناطق (مع تقسيم حسب المحافظات)
 function formatAllAreasList() {
     const govs = [...new Set(industrialAreasData.map(a => a.governorate))];
+    
     let html = `<div class="info-card">
         <div class="info-card-header">
             📋 قائمة كاملة بالمناطق الصناعية في مصر
@@ -460,6 +531,7 @@ function formatAllAreasList() {
             </div>
         </div>
     </div>`;
+    
     govs.forEach(gov => {
         const areas = industrialAreasData.filter(a => a.governorate === gov);
         html += `<div class="choice-btn" onclick="sendMessage('المناطق الصناعية: ما هي المناطق الصناعية في ${gov}')">
@@ -467,12 +539,14 @@ function formatAllAreasList() {
             <strong>${gov}</strong> <small>(${areas.length} منطقة)</small>
         </div>`;
     });
+    
     if (govs.length > 10) {
         const remaining = govs.slice(10);
         html += `<div style="text-align: center; padding: 10px; color: #666; font-size: 0.9em;">
             ... و ${remaining.length} محافظة أخرى
         </div>`;
     }
+    
     return html;
 }
 
@@ -494,6 +568,7 @@ function formatGovernoratesCount(governorates) {
         </div>
     </div>
     <div class="area-list">`;
+    
     governorates.forEach((gov, i) => {
         const count = industrialAreasData.filter(a => a.governorate === gov).length;
         html += `<div class="area-item" onclick="sendMessage('المناطق الصناعية في ${gov}')">
@@ -501,6 +576,7 @@ function formatGovernoratesCount(governorates) {
             <small style="color: #666;">📊 ${count} منطقة صناعية</small>
         </div>`;
     });
+    
     html += `</div>`;
     return html;
 }
@@ -511,12 +587,14 @@ function formatGovernorateChoices(governorates) {
         <div class="info-card-header">🗺️ اختر المحافظة</div>
     </div>
     <div class="area-list">`;
+    
     governorates.forEach((gov, i) => {
         const count = industrialAreasData.filter(a => a.governorate === gov).length;
         html += `<div class="area-item" onclick="sendMessage('المناطق الصناعية في ${gov}')">
             ${i + 1}. <strong>${gov}</strong> <small>(${count} منطقة)</small>
         </div>`;
     });
+    
     html += `</div>`;
     return html;
 }
@@ -541,8 +619,10 @@ function formatGeneralCountWithOptions(totalAreas) {
                 </div>
             </div>
         </div>
+        
         <div style="margin-top: 20px; padding: 16px; background: #f7f7f8; border-radius: 12px;">
             <strong>🤔 لأي من الجوانب التالية تبحث عن معلومات؟</strong><br><br>
+            
             <div class="choice-btn" onclick="sendMessage('عدد المناطق الصناعية لكل جهة ولاية')">
                 <span class="choice-icon">📊</span> عدد المناطق لكل جهة ولاية
             </div>
@@ -578,6 +658,7 @@ function formatAreasListByGovernorate(governorate, areas) {
         </div>
     </div>
     <div class="area-list">`;
+    
     areas.forEach((area, i) => {
         html += `<div class="area-item" onclick="selectIndustrialArea('${area.name.replace(/'/g, "\\'")}')">
             <div style="display: flex; justify-content: space-between; align-items: center;">
@@ -589,10 +670,12 @@ function formatAreasListByGovernorate(governorate, areas) {
             </div>
         </div>`;
     });
+    
     html += `</div>
     <div style="margin-top: 12px; padding: 10px; background: #f0f9ff; border-radius: 8px; font-size: 0.85rem; color: #0369a1;">
         💡 يمكنك أيضاً سؤالي عن: "عدد المناطق الصناعية في ${governorate}"
     </div>`;
+    
     return html;
 }
 
@@ -631,6 +714,7 @@ function formatDependencyChoices(deps) {
         </div>
     </div>
     <div class="area-list">`;
+    
     deps.forEach((dep, i) => {
         const count = industrialAreasData.filter(a => a.dependency === dep).length;
         html += `<div class="area-item" onclick="sendMessage('المناطق التابعة لـ ${dep}')">
@@ -644,10 +728,12 @@ function formatDependencyChoices(deps) {
             </div>
         </div>`;
     });
+    
     html += `</div>
     <div style="margin-top: 12px; padding: 10px; background: #f0f9ff; border-radius: 8px; font-size: 0.85rem; color: #0369a1;">
         💡 اختر جهة الولاية من القائمة أعلاه لعرض المناطق التابعة لها
     </div>`;
+    
     return html;
 }
 
@@ -669,6 +755,7 @@ function formatDependenciesCount(deps) {
         </div>
     </div>
     <div class="area-list">`;
+    
     deps.forEach((dep, i) => {
         const count = industrialAreasData.filter(a => a.dependency === dep).length;
         html += `<div class="area-item" onclick="sendMessage('المناطق التابعة لـ ${dep}')">
@@ -682,6 +769,7 @@ function formatDependenciesCount(deps) {
             </div>
         </div>`;
     });
+    
     html += `</div>`;
     return html;
 }
@@ -702,6 +790,7 @@ function formatAreasListByDependency(dependency, areas) {
         </div>
     </div>
     <div class="area-list">`;
+    
     areas.forEach((area, i) => {
         html += `<div class="area-item" onclick="selectIndustrialArea('${area.name.replace(/'/g, "\\'")}')">
             <div style="display: flex; justify-content: space-between; align-items: center;">
@@ -713,65 +802,14 @@ function formatAreasListByDependency(dependency, areas) {
             </div>
         </div>`;
     });
+    
     html += `</div>
     <div style="margin-top: 12px; padding: 10px; background: #f0f9ff; border-radius: 8px; font-size: 0.85rem; color: #0369a1;">
         💡 يمكنك أيضاً سؤالي عن: "عدد المناطق التابعة لـ ${dependency}"
     </div>`;
+    
     return html;
 }
 
-// ==================== دوال التنسيق الأساسية للمناطق (مستقلة) ====================
-
-function formatIndustrialResponse(area) {
-    const mapLink = (area.x && area.y && area.x !== 0 && area.y !== 0)
-        ? `https://www.google.com/maps?q=${area.y},${area.x}`
-        : null;
-    return `
-        <div class="info-card">
-            <div class="info-card-header">🏭 ${area.name}</div>
-            <div class="info-card-content">
-                <div class="info-row"><div class="info-label">📍 المحافظة:</div><div class="info-value">${area.governorate}</div></div>
-                <div class="info-row"><div class="info-label">🏛️ جهة الولاية:</div><div class="info-value">${area.dependency}</div></div>
-                <div class="info-row"><div class="info-label">📜 القرار:</div><div class="info-value">${area.decision || 'غير متوفر'}</div></div>
-                <div class="info-row"><div class="info-label">📏 المساحة:</div><div class="info-value">${area.area} فدان</div></div>
-            </div>
-            ${mapLink ? `<a href="${mapLink}" target="_blank" class="link-btn map-btn"><i class="fas fa-map-marked-alt"></i> عرض على الخريطة</a>` : ''}
-        </div>
-        <div style="margin-top: 12px; padding: 10px; background: #f0f9ff; border-radius: 8px; font-size: 0.85rem; color: #0369a1;">
-            💡 يمكنك سؤالي عن: القرار، جهة الولاية، المساحة، أو موقع الخريطة
-        </div>
-    `;
-}
-
-function formatIndustrialMapLink(area) {
-    if (!area.x || !area.y || area.x === 0 || area.y === 0) {
-        return `⚠️ <strong>إحداثيات الموقع غير متوفرة</strong><br><br>
-            📍 المنطقة: ${area.name}<br>
-            📍 المحافظة: ${area.governorate}<br><br>
-            <em style="color: #666;">الإحداثيات لم يتم تحديدها في قاعدة البيانات</em>`;
-    }
-    const mapLink = `https://www.google.com/maps?q=${area.y},${area.x}`;
-    return `<div class="info-card">
-        <div class="info-card-header">🗺️ موقع ${area.name}</div>
-        <div class="info-card-content">
-            <div class="info-row"><div class="info-label">📍 المحافظة:</div><div class="info-value">${area.governorate}</div></div>
-            <div class="info-row"><div class="info-label">🌐 خط الطول:</div><div class="info-value">${area.x}</div></div>
-            <div class="info-row"><div class="info-label">🌐 خط العرض:</div><div class="info-value">${area.y}</div></div>
-        </div>
-    </div>
-    <a href="${mapLink}" target="_blank" class="link-btn map-btn">
-        <i class="fas fa-map-marked-alt"></i> فتح الموقع في خرائط جوجل
-    </a>`;
-}
-
-// دالة إضافية للتنسيق (مطلوبة في بعض الأماكن)
-function formatSingleAreaResponse(area, areaName) {
-    return formatIndustrialResponse(area); // يمكن استخدام نفس التنسيق
-}
-
-// ==================== تصدير الدوال العامة ====================
-window.handleIndustrialQuery = handleIndustrialQuery;
-window.formatIndustrialResponse = formatIndustrialResponse;
-window.formatIndustrialMapLink = formatIndustrialMapLink;
-
-console.log('✅ gpt_areas.js - الإصدار المُصحح والمستقل بعد إزالة التكرارات تم تحميله بنجاح!');
+console.log('✅ gpt_areas.js - الإصدار المُصحح تم تحميله بنجاح!');
+console.log('🔧 التحسينات: فلتر "ال" التعريفية + فحص جودة النتائج');
